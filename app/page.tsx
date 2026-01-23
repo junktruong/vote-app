@@ -1,64 +1,223 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+
+type User = {
+  id: string;
+  displayName: string;
+  username: string;
+  avatarUrl: string;
+  deviceId: string;
+};
+
+type ApiResponse =
+  | { ok: true; user: User }
+  | { ok: false; message: string };
 
 export default function Home() {
+  const [displayName, setDisplayName] = useState("");
+  const [username, setUsername] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [quickUsername, setQuickUsername] = useState("");
+  const [status, setStatus] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [deviceId, setDeviceId] = useState<string>("");
+
+  const canRegister = useMemo(() => {
+    return displayName.trim() && username.trim() && avatarUrl.trim();
+  }, [displayName, username, avatarUrl]);
+
+  useEffect(() => {
+    const storedDeviceId = localStorage.getItem("deviceId");
+    const nextDeviceId =
+      storedDeviceId ??
+      (typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `device-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+    if (!storedDeviceId) {
+      localStorage.setItem("deviceId", nextDeviceId);
+    }
+    setDeviceId(nextDeviceId);
+
+    const storedUsername = localStorage.getItem("username");
+    if (storedUsername) {
+      setQuickUsername(storedUsername);
+      void handleLogin(storedUsername, nextDeviceId, true);
+    }
+  }, []);
+
+  const handleRegister = async () => {
+    setStatus("Đang tạo tài khoản...");
+    const response = await fetch("/api/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "register",
+        displayName: displayName.trim(),
+        username: username.trim(),
+        avatarUrl: avatarUrl.trim(),
+        deviceId,
+      }),
+    });
+    const data = (await response.json()) as ApiResponse;
+    if (!data.ok) {
+      setStatus(data.message);
+      return;
+    }
+    localStorage.setItem("username", data.user.username);
+    setStatus(`Xin chào ${data.user.displayName}!`);
+    setCurrentUser(data.user);
+  };
+
+  const handleLogin = async (
+    nextUsername: string,
+    nextDeviceId = deviceId,
+    isAuto = false,
+  ) => {
+    if (!nextUsername.trim()) {
+      setStatus("Vui lòng nhập tên đăng nhập.");
+      return;
+    }
+    setStatus(isAuto ? "Đang tự đăng nhập..." : "Đang đăng nhập...");
+    const response = await fetch("/api/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "login",
+        username: nextUsername.trim(),
+        deviceId: nextDeviceId,
+      }),
+    });
+    const data = (await response.json()) as ApiResponse;
+    if (!data.ok) {
+      setStatus(data.message);
+      return;
+    }
+    localStorage.setItem("username", data.user.username);
+    setStatus(`Đăng nhập thành công: ${data.user.displayName}`);
+    setCurrentUser(data.user);
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="min-h-screen bg-slate-50 px-6 py-12 text-slate-900">
+      <main className="mx-auto flex w-full max-w-4xl flex-col gap-10">
+        <header className="flex flex-col gap-4">
+          <h1 className="text-3xl font-semibold">Tạo tài khoản bỏ phiếu</h1>
+          <p className="text-base text-slate-600">
+            Mỗi thiết bị chỉ được tạo một tài khoản. Thiết bị sẽ được định danh
+            bằng <span className="font-medium">deviceId</span> lưu trong trình
+            duyệt.
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm">
+            <div className="text-slate-500">DeviceId hiện tại</div>
+            <div className="mt-1 font-mono text-slate-900">{deviceId}</div>
+          </div>
+        </header>
+
+        <section className="grid gap-8 lg:grid-cols-[1.2fr_1fr]">
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 className="text-xl font-semibold">Đăng ký tài khoản mới</h2>
+            <p className="mt-2 text-sm text-slate-500">
+              Nhập đầy đủ thông tin để tạo tài khoản gắn với thiết bị này.
+            </p>
+            <div className="mt-6 grid gap-4">
+              <label className="grid gap-2 text-sm font-medium">
+                Tên hiển thị
+                <input
+                  className="rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-slate-400 focus:outline-none"
+                  value={displayName}
+                  onChange={(event) => setDisplayName(event.target.value)}
+                  placeholder="Ví dụ: Mai Anh"
+                />
+              </label>
+              <label className="grid gap-2 text-sm font-medium">
+                Tên đăng nhập
+                <input
+                  className="rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-slate-400 focus:outline-none"
+                  value={username}
+                  onChange={(event) => setUsername(event.target.value)}
+                  placeholder="mai.anh"
+                />
+              </label>
+              <label className="grid gap-2 text-sm font-medium">
+                Ảnh đại diện
+                <input
+                  className="rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-slate-400 focus:outline-none"
+                  value={avatarUrl}
+                  onChange={(event) => setAvatarUrl(event.target.value)}
+                  placeholder="https://..."
+                />
+              </label>
+              <button
+                type="button"
+                onClick={handleRegister}
+                disabled={!canRegister}
+                className="rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+              >
+                Tạo tài khoản
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-6">
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 className="text-xl font-semibold">Đăng nhập nhanh</h2>
+              <p className="mt-2 text-sm text-slate-500">
+                Nhập tên đăng nhập, hệ thống sẽ kiểm tra deviceId đang lưu.
+              </p>
+              <div className="mt-5 grid gap-4">
+                <label className="grid gap-2 text-sm font-medium">
+                  Tên đăng nhập
+                  <input
+                    className="rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-slate-400 focus:outline-none"
+                    value={quickUsername}
+                    onChange={(event) => setQuickUsername(event.target.value)}
+                    placeholder="mai.anh"
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={() => handleLogin(quickUsername)}
+                  className="rounded-xl border border-slate-900 px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-900 hover:text-white"
+                >
+                  Đăng nhập
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h3 className="text-lg font-semibold">Thông tin đăng nhập</h3>
+              <div className="mt-4 space-y-3 text-sm text-slate-600">
+                <p>
+                  Trạng thái:{" "}
+                  <span className="font-medium text-slate-900">
+                    {status ?? "Chưa đăng nhập"}
+                  </span>
+                </p>
+                {currentUser ? (
+                  <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                    <div className="text-slate-700">
+                      <div className="font-semibold text-slate-900">
+                        {currentUser.displayName}
+                      </div>
+                      <div>@{currentUser.username}</div>
+                      <div className="mt-2 break-all text-xs text-slate-500">
+                        DeviceId: {currentUser.deviceId}
+                      </div>
+                    </div>
+                    <div className="mt-3 text-xs text-slate-500">
+                      Ảnh đại diện: {currentUser.avatarUrl}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500">
+                    Hãy đăng nhập hoặc đăng ký để xem thông tin tài khoản.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
       </main>
     </div>
   );
