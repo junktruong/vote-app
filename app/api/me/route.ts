@@ -8,6 +8,10 @@ export async function GET() {
   const userId = await getUserIdFromSession();
   if (!userId) return NextResponse.json({ user: null });
 
-  const u = await User.findById(userId).select("fullName username photoUrl").lean();
-  return NextResponse.json({ user: u ? { ...u, _id: String(u._id) } : null });
+  const u = await User.findById(userId).select("fullName username thumb photo photoUrl").lean();
+  return NextResponse.json({
+    user: u
+      ? { ...u, _id: String(u._id), thumb: u.thumb || u.photo || u.photoUrl, photo: u.photo || u.thumb || u.photoUrl }
+      : null,
+  });
 }

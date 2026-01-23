@@ -29,7 +29,8 @@ export async function POST(req: Request) {
   const uploadForm = new FormData();
   uploadForm.append("image", photoFile);
 
-  let photoUrl = "";
+  let thumb = "";
+  let photo = "";
   try {
     const uploadRes = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
       method: "POST",
@@ -37,8 +38,9 @@ export async function POST(req: Request) {
     });
     const uploadData = await uploadRes.json();
 
-    photoUrl = uploadData?.data?.thumb.url || "";
-    if (!uploadRes.ok || !photoUrl) {
+    thumb = uploadData?.data?.thumb?.url || "";
+    photo = uploadData?.data?.url || "";
+    if (!uploadRes.ok || !thumb || !photo) {
       return NextResponse.json({ error: "Không thể tải ảnh lên." }, { status: 400 });
     }
   } catch (error) {
@@ -46,7 +48,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const user = await User.create({ fullName, username, photoUrl, deviceId });
+    const user = await User.create({ fullName, username, thumb, photo, deviceId });
     await setUserSession(String(user._id));
     return NextResponse.json({ ok: true });
   } catch (e: any) {

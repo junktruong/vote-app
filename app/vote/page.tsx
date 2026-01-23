@@ -1,9 +1,14 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function VotePage() {
   const [data, setData] = useState<any>(null);
   const [msg, setMsg] = useState("Đang tải...");
+  const [selected, setSelected] = useState<string[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [justVoted, setJustVoted] = useState<string[]>([]);
+  const r = useRouter();
 
   async function load() {
     const res = await fetch("/api/results");
@@ -14,17 +19,33 @@ export default function VotePage() {
 
   useEffect(() => { load(); }, []);
 
-  async function vote(candidateUserId: string) {
+  async function vote() {
     setMsg("Đang gửi bình chọn...");
+    setSubmitting(true);
     const res = await fetch("/api/vote", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ candidateUserId }),
+      body: JSON.stringify({ candidateUserIds: selected }),
     });
     const d = await res.json();
-    if (!res.ok) return setMsg(d.error || "Lỗi");
+    if (!res.ok) {
+      setSubmitting(false);
+      return setMsg(d.error || "Lỗi");
+    }
+    const votedNames = selected
+      .map((id) => data.candidates.find((c: any) => c.userId === id)?.fullName)
+      .filter(Boolean);
+    setJustVoted(votedNames);
     setMsg("Bình chọn thành công!");
+    setSubmitting(false);
+    setTimeout(() => r.push("/results"), 1600);
   }
+
+  const maxVotes = data?.poll?.maxVotes ?? 3;
+  const selectedNames = useMemo(
+    () => selected.map((id) => data?.candidates?.find((c: any) => c.userId === id)?.fullName).filter(Boolean),
+    [selected, data]
+  );
 
   if (!data) return <main className="min-h-screen bg-[#FFFAF0] px-6 py-10 text-slate-700">{msg}</main>;
   if (!data.poll || !data.poll.isActive) {
@@ -44,30 +65,73 @@ export default function VotePage() {
           <header className="rounded-3xl border border-red-100 bg-white/90 p-6 shadow-md">
             <p className="text-sm font-semibold text-red-700">Bình chọn Tết</p>
             <h1 className="mt-3 text-3xl font-bold text-red-700">{data.poll.title}</h1>
-            <p className="mt-2 text-sm text-slate-600">Chọn 1 người để bình chọn (mỗi poll 1 lần).</p>
+            <p className="mt-2 text-sm text-slate-600">Chọn {maxVotes} người để bình chọn.</p>
           </header>
 
           <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {data.candidates.map((c: any) => (
-              <div key={c.userId} className="rounded-3xl border border-red-100 bg-white/95 p-4 shadow-md">
-                <img src={c.photoUrl} className="h-40 w-full rounded-2xl object-cover" />
+              <div
+                key={c.userId}
+                className={`rounded-3xl border bg-white/95 p-4 shadow-md transition ${
+                  selected.includes(c.userId) ? "border-yellow-300 ring-2 ring-yellow-200" : "border-red-100"
+                }`}
+              >
+                <img src={c.thumb} className="h-40 w-full rounded-2xl object-cover" />
                 <div className="mt-4">
                   <h3 className="text-lg font-semibold text-slate-900">{c.fullName}</h3>
                   <div className="text-sm text-slate-500">@{c.username}</div>
                   <button
-                    className="mt-4 w-full rounded-full bg-[#D32F2F] px-5 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-[#B71C1C]"
-                    onClick={() => vote(c.userId)}
+                    className={`mt-4 w-full rounded-full px-5 py-2 text-sm font-semibold shadow-md transition ${
+                      selected.includes(c.userId)
+                        ? "bg-yellow-400 text-slate-900 hover:bg-yellow-300"
+                        : "bg-[#D32F2F] text-white hover:bg-[#B71C1C]"
+                    }`}
+                    onClick={() => {
+                      setSelected((prev) => {
+                        if (prev.includes(c.userId)) return prev.filter((id) => id !== c.userId);
+                        if (prev.length >= maxVotes) {
+                          setMsg(`Bạn chỉ được chọn tối đa ${maxVotes} người.`);
+                          return prev;
+                        }
+                        return [...prev, c.userId];
+                      });
+                    }}
                   >
-                    Bình chọn
+                    {selected.includes(c.userId) ? "Đã chọn" : "Chọn"}
                   </button>
                 </div>
               </div>
             ))}
           </section>
 
-          <div className="rounded-3xl border border-yellow-100 bg-white/80 p-4 text-sm text-slate-700 shadow-sm">
-            {msg}
+          <div className="flex flex-col gap-4 rounded-3xl border border-yellow-100 bg-white/80 p-5 text-sm text-slate-700 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="font-semibold text-slate-900">Bạn đã chọn {selected.length}/{maxVotes}</p>
+                {selectedNames.length ? (
+                  <p className="text-xs text-slate-600">Đã chọn: {selectedNames.join(", ")}</p>
+                ) : null}
+              </div>
+              <button
+                onClick={vote}
+                disabled={selected.length !== maxVotes || submitting}
+                className="rounded-full bg-[#FBC02D] px-6 py-3 text-sm font-semibold text-slate-900 shadow-lg transition hover:bg-[#F9A825] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Xác nhận
+              </button>
+            </div>
+            <p>{msg}</p>
           </div>
+
+          {justVoted.length ? (
+            <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/30 px-6">
+              <div className="w-full max-w-md rounded-3xl bg-white p-6 text-center shadow-2xl">
+                <p className="text-sm font-semibold text-slate-700">Bạn đã bình chọn thành công</p>
+                <p className="mt-2 text-lg font-bold text-red-700">{justVoted.join(", ")}</p>
+                <p className="mt-2 text-xs text-slate-500">Đang chuyển sang trang kết quả...</p>
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
     </main>

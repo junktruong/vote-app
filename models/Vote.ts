@@ -9,8 +9,8 @@ const VoteSchema = new Schema(
   { timestamps: true }
 );
 
-// unique: 1 user chỉ vote 1 lần/poll
-VoteSchema.index({ pollId: 1, voterUserId: 1 }, { unique: true });
+// unique: 1 user chỉ vote 1 lần / 1 ứng viên trong poll
+VoteSchema.index({ pollId: 1, voterUserId: 1, candidateUserId: 1 }, { unique: true });
 
 export type VoteDoc = mongoose.InferSchemaType<typeof VoteSchema> & { _id: mongoose.Types.ObjectId };
 

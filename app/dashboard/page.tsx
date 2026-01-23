@@ -1,4 +1,5 @@
 import Link from "next/link";
+import AvatarPanel from "./avatar-panel";
 
 export default async function Dashboard() {
   const meRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL ?? ""}/api/me`, { cache: "no-store" }).catch(()=>null);
@@ -51,6 +52,8 @@ export default async function Dashboard() {
               </div>
             </div>
           </section>
+
+          <AvatarPanel />
         </div>
       </div>
     </main>

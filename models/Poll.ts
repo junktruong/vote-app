@@ -5,6 +5,8 @@ const PollSchema = new Schema(
     title: { type: String, required: true },
     isActive: { type: Boolean, default: true },
     revealWinner: { type: Boolean, default: false },
+    showOnResults: { type: Boolean, default: false },
+    maxVotes: { type: Number, default: 3 },
     candidateUserIds: [{ type: Schema.Types.ObjectId, ref: "User", required: true }],
     endedAt: { type: Date, default: null },
   },

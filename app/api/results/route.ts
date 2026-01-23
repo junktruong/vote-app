@@ -7,13 +7,14 @@ import Vote from "@/models/Vote";
 export async function GET() {
   await dbConnect();
   const poll =
+    (await Poll.findOne({ showOnResults: true }).sort({ createdAt: -1 }).lean()) ||
     (await Poll.findOne({ isActive: true }).sort({ createdAt: -1 }).lean()) ||
     (await Poll.findOne({}).sort({ createdAt: -1 }).lean());
 
   if (!poll) return NextResponse.json({ poll: null, candidates: [], top: null });
 
   const users = await User.find({ _id: { $in: poll.candidateUserIds } })
-    .select("fullName username photoUrl")
+    .select("fullName username thumb photo photoUrl")
     .lean();
 
   const counts = await Vote.aggregate([
@@ -27,7 +28,8 @@ export async function GET() {
       userId: String(u._id),
       fullName: u.fullName,
       username: u.username,
-      photoUrl: u.photoUrl,
+      thumb: u.thumb || u.photo || u.photoUrl,
+      photo: u.photo || u.thumb || u.photoUrl,
       votes: map.get(String(u._id)) || 0,
     }))
     .sort((a, b) => b.votes - a.votes || a.fullName.localeCompare(b.fullName));
@@ -35,7 +37,14 @@ export async function GET() {
   const top = candidates[0] || null;
 
   return NextResponse.json({
-    poll: { id: String(poll._id), title: poll.title, isActive: poll.isActive, revealWinner: poll.revealWinner },
+    poll: {
+      id: String(poll._id),
+      title: poll.title,
+      isActive: poll.isActive,
+      revealWinner: poll.revealWinner,
+      showOnResults: poll.showOnResults,
+      maxVotes: poll.maxVotes ?? 3,
+    },
     candidates,
     top,
   });

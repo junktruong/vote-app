@@ -7,8 +7,10 @@ export async function POST() {
   if (!(await isAdmin())) return NextResponse.json({ error: "Chưa đăng nhập admin." }, { status: 401 });
   await dbConnect();
 
-  const poll = (await Poll.findOne({ isActive: true }).sort({ createdAt: -1 }))
-    || (await Poll.findOne({}).sort({ createdAt: -1 }));
+  const poll =
+    (await Poll.findOne({ showOnResults: true }).sort({ createdAt: -1 })) ||
+    (await Poll.findOne({ isActive: true }).sort({ createdAt: -1 })) ||
+    (await Poll.findOne({}).sort({ createdAt: -1 }));
 
   if (!poll) return NextResponse.json({ error: "Chưa có poll." }, { status: 400 });
 
