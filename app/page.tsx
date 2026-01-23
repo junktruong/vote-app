@@ -11,6 +11,7 @@ export default function Home() {
   const [mode, setMode] = useState<"register" | "login">("register");
   const [msg, setMsg] = useState("");
   const [photoName, setPhotoName] = useState("");
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
 
   useEffect(() => {
     fetch("/api/me")
@@ -22,10 +23,14 @@ export default function Home() {
 
   async function register() {
     setMsg("Đang tạo...");
+    if (!photoFile) {
+      setMsg("Vui lòng chọn ảnh đại diện.");
+      return;
+    }
     const fd = new FormData();
     fd.append("fullName", reg.fullName);
     fd.append("username", reg.username);
-    fd.append("photoUrl", reg.photoUrl);
+    fd.append("photo", photoFile);
 
     const res = await fetch("/api/register", { method: "POST", body: fd });
     const data = await res.json();
@@ -49,6 +54,7 @@ export default function Home() {
     const file = event.target.files?.[0];
     if (!file) return;
     setPhotoName(file.name);
+    setPhotoFile(file);
     const reader = new FileReader();
     reader.onload = () => {
       setReg((s) => ({ ...s, photoUrl: String(reader.result || "") }));
