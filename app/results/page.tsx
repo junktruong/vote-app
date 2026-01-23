@@ -33,41 +33,70 @@ export default function Results() {
     lastReveal.current = !!data.poll.revealWinner;
   }, [data]);
 
-  if (!data) return <main style={{ padding: 24 }}>{msg}</main>;
+  if (!data) return <main className="min-h-screen bg-[#FFFAF0] px-6 py-10 text-slate-700">{msg}</main>;
 
   return (
-    <main style={{ maxWidth: 980, margin: "0 auto", padding: 24, fontFamily: "system-ui" }}>
-      <h1>Kết quả</h1>
-      <p style={{ opacity: 0.8 }}>
-        {data.poll ? `${data.poll.title} • ${data.poll.isActive ? "Đang diễn ra" : "Đã dừng"} • Reveal: ${data.poll.revealWinner ? "HIỆN" : "ẨN"}` : "—"}
-      </p>
+    <main className="min-h-screen bg-[#FFFAF0] text-slate-900">
+      <div className="relative overflow-hidden">
+        <div className="absolute inset-0 opacity-40">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(251,192,45,0.18),_transparent_55%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(211,47,47,0.16),_transparent_60%)]" />
+          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/flowers.png')] opacity-30" />
+        </div>
 
-      {data.top && data.poll?.revealWinner && (
-        <div id="winnerBox" style={{ display: "flex", gap: 16, alignItems: "center", padding: 16, border: "1px solid #ddd", borderRadius: 14, margin: "14px 0" }}>
-          <img src={data.top.photoUrl} style={{ width: 90, height: 90, objectFit: "cover", borderRadius: 14 }} />
-          <div>
-            <div style={{ opacity: 0.7 }}>Người dẫn đầu</div>
-            <div style={{ fontSize: 22, fontWeight: 800 }}>{data.top.fullName} (@{data.top.username})</div>
-            <div style={{ marginTop: 6 }}>{data.top.votes} phiếu</div>
+        <div className="relative mx-auto flex max-w-5xl flex-col gap-8 px-6 pb-16 pt-14">
+          <header className="rounded-3xl border border-red-100 bg-white/90 p-6 shadow-md">
+            <p className="text-sm font-semibold text-red-700">Bảng kết quả Tết</p>
+            <h1 className="mt-3 text-3xl font-bold text-red-700">Kết quả</h1>
+            <p className="mt-2 text-sm text-slate-600">
+              {data.poll
+                ? `${data.poll.title} • ${data.poll.isActive ? "Đang diễn ra" : "Đã dừng"} • Reveal: ${data.poll.revealWinner ? "HIỆN" : "ẨN"}`
+                : "—"}
+            </p>
+          </header>
+
+          {data.top && data.poll?.revealWinner && (
+            <div
+              id="winnerBox"
+              className="flex flex-col gap-4 rounded-3xl border border-yellow-200 bg-[#FFF7D1] p-5 shadow-md sm:flex-row sm:items-center"
+            >
+              <img src={data.top.photoUrl} className="h-24 w-24 rounded-2xl object-cover shadow" />
+              <div>
+                <div className="text-sm font-semibold text-yellow-700">Người dẫn đầu</div>
+                <div className="text-xl font-bold text-slate-900">
+                  {data.top.fullName} (@{data.top.username})
+                </div>
+                <div className="mt-1 text-sm text-slate-700">{data.top.votes} phiếu</div>
+              </div>
+            </div>
+          )}
+
+          <section className="rounded-3xl border border-red-100 bg-white/95 p-6 shadow-md">
+            <h3 className="text-lg font-semibold text-slate-900">Bảng phiếu</h3>
+            <div className="mt-4 grid gap-3">
+              {data.candidates.map((c: any) => (
+                <div
+                  key={c.userId}
+                  className="flex flex-wrap items-center gap-4 rounded-2xl border border-red-100 bg-white px-4 py-3 shadow-sm"
+                >
+                  <img src={c.photoUrl} className="h-14 w-14 rounded-xl object-cover" />
+                  <div className="flex-1">
+                    <div className="font-semibold text-slate-900">{c.fullName}</div>
+                    <div className="text-sm text-slate-500">@{c.username}</div>
+                  </div>
+                  <div className="rounded-full bg-red-50 px-3 py-1 text-sm font-semibold text-red-700">
+                    {c.votes} phiếu
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <div className="rounded-3xl border border-yellow-100 bg-white/80 p-4 text-sm text-slate-700 shadow-sm">
+            {msg}
           </div>
         </div>
-      )}
-
-      <h3>Bảng phiếu</h3>
-      <div style={{ display: "grid", gap: 10 }}>
-        {data.candidates.map((c: any) => (
-          <div key={c.userId} style={{ display: "flex", gap: 12, alignItems: "center", border: "1px solid #eee", borderRadius: 12, padding: 10 }}>
-            <img src={c.photoUrl} style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 12 }} />
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700 }}>{c.fullName}</div>
-              <div style={{ opacity: 0.7 }}>@{c.username}</div>
-            </div>
-            <div style={{ fontWeight: 800 }}>{c.votes} phiếu</div>
-          </div>
-        ))}
       </div>
-
-      <p style={{ marginTop: 12 }}>{msg}</p>
     </main>
   );
 }
