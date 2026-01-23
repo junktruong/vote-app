@@ -7,6 +7,7 @@ const UserSchema = new Schema(
     thumb: { type: String, required: true },
     photo: { type: String, required: true },
     deviceId: { type: String, required: true, unique: true },
+    lastKnownIp: { type: String },
   },
   { timestamps: true }
 );
