@@ -6,7 +6,7 @@ import Vote from "@/models/Vote";
 
 export async function POST(req: Request) {
   await dbConnect();
-  const userId = getUserIdFromSession();
+  const userId = await getUserIdFromSession();
   if (!userId) return NextResponse.json({ error: "Chưa đăng nhập." }, { status: 401 });
 
   const { candidateUserId } = await req.json();

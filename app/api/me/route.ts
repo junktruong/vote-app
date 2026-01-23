@@ -5,7 +5,7 @@ import { getUserIdFromSession } from "@/lib/auth";
 
 export async function GET() {
   await dbConnect();
-  const userId = getUserIdFromSession();
+  const userId = await getUserIdFromSession();
   if (!userId) return NextResponse.json({ user: null });
 
   const u = await User.findById(userId).select("fullName username photoUrl").lean();

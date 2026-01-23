@@ -5,7 +5,7 @@ import { getOrSetDeviceId, setUserSession } from "@/lib/auth";
 
 export async function POST(req: Request) {
   await dbConnect();
-  const deviceId = getOrSetDeviceId();
+  const deviceId = await getOrSetDeviceId();
 
   const form = await req.formData();
   const fullName = String(form.get("fullName") || "").trim();
@@ -24,7 +24,7 @@ export async function POST(req: Request) {
 
   try {
     const user = await User.create({ fullName, username, photoUrl, deviceId });
-    setUserSession(String(user._id));
+    await setUserSession(String(user._id));
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     return NextResponse.json({ error: "Username đã tồn tại hoặc lỗi hệ thống." }, { status: 400 });

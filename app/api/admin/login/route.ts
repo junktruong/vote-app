@@ -6,6 +6,6 @@ export async function POST(req: Request) {
   if (password !== process.env.ADMIN_PASSWORD) {
     return NextResponse.json({ error: "Sai mật khẩu admin." }, { status: 400 });
   }
-  setAdminSession();
+  await setAdminSession();
   return NextResponse.json({ ok: true });
 }

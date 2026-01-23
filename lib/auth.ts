@@ -21,8 +21,8 @@ function verify(signed: string | undefined | null) {
   return hmac(value) === sig ? value : null;
 }
 
-export function getOrSetDeviceId() {
-  const jar = cookies();
+export async function getOrSetDeviceId() {
+  const jar = await cookies();
   const existing = jar.get(DEVICE_COOKIE)?.value;
   if (existing) return existing;
 
@@ -31,22 +31,27 @@ export function getOrSetDeviceId() {
   return id;
 }
 
-export function setUserSession(userId: string) {
-  cookies().set(SESSION_COOKIE, sign(userId), { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 365 });
+export async function setUserSession(userId: string) {
+  const jar = await cookies();
+  jar.set(SESSION_COOKIE, sign(userId), { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 365 });
 }
 
-export function getUserIdFromSession() {
-  return verify(cookies().get(SESSION_COOKIE)?.value) ?? null;
+export async function getUserIdFromSession() {
+  const jar = await cookies();
+  return verify(jar.get(SESSION_COOKIE)?.value) ?? null;
 }
 
-export function clearUserSession() {
-  cookies().set(SESSION_COOKIE, "", { httpOnly: true, sameSite: "lax", path: "/", maxAge: 0 });
+export async function clearUserSession() {
+  const jar = await cookies();
+  jar.set(SESSION_COOKIE, "", { httpOnly: true, sameSite: "lax", path: "/", maxAge: 0 });
 }
 
-export function setAdminSession() {
-  cookies().set(ADMIN_COOKIE, sign("1"), { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 12 });
+export async function setAdminSession() {
+  const jar = await cookies();
+  jar.set(ADMIN_COOKIE, sign("1"), { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 12 });
 }
 
-export function isAdmin() {
-  return verify(cookies().get(ADMIN_COOKIE)?.value) === "1";
+export async function isAdmin() {
+  const jar = await cookies();
+  return verify(jar.get(ADMIN_COOKIE)?.value) === "1";
 }

@@ -4,7 +4,7 @@ import Poll from "@/models/Poll";
 import { isAdmin } from "@/lib/auth";
 
 export async function POST(req: Request) {
-  if (!isAdmin()) return NextResponse.json({ error: "Chưa đăng nhập admin." }, { status: 401 });
+  if (!(await isAdmin())) return NextResponse.json({ error: "Chưa đăng nhập admin." }, { status: 401 });
   await dbConnect();
 
   const { title, candidateUserIds } = await req.json();
