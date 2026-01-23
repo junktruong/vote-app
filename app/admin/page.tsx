@@ -197,7 +197,6 @@ export default function Admin() {
                   <img src={u.thumb} className="h-12 w-12 rounded-xl object-cover" />
                   <div className="flex-1">
                     <div className="font-semibold text-slate-900">{u.fullName}</div>
-                    <div className="text-sm text-slate-500">@{u.username}</div>
                   </div>
                   <input
                     type="checkbox"

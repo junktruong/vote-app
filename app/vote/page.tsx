@@ -79,7 +79,6 @@ export default function VotePage() {
                 <img src={c.thumb} className="h-40 w-full rounded-2xl object-cover" />
                 <div className="mt-4">
                   <h3 className="text-lg font-semibold text-slate-900">{c.fullName}</h3>
-                  <div className="text-sm text-slate-500">@{c.username}</div>
                   <button
                     className={`mt-4 w-full rounded-full px-5 py-2 text-sm font-semibold shadow-md transition ${
                       selected.includes(c.userId)

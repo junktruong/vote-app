@@ -6,8 +6,7 @@ import { useRouter } from "next/navigation";
 export default function Home() {
   const r = useRouter();
   const photoInputId = useId();
-  const [reg, setReg] = useState({ fullName: "", username: "", photoUrl: "" });
-  const [loginUsername, setLoginUsername] = useState("");
+  const [reg, setReg] = useState({ fullName: "", photoUrl: "" });
   const [mode, setMode] = useState<"register" | "login">("register");
   const [msg, setMsg] = useState("");
   const [photoName, setPhotoName] = useState("");
@@ -29,7 +28,6 @@ export default function Home() {
     }
     const fd = new FormData();
     fd.append("fullName", reg.fullName);
-    fd.append("username", reg.username);
     fd.append("photo", photoFile);
 
     const res = await fetch("/api/register", { method: "POST", body: fd });
@@ -42,8 +40,6 @@ export default function Home() {
     setMsg("Đang đăng nhập...");
     const res = await fetch("/api/login", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: loginUsername }),
     });
     const data = await res.json();
     if (!res.ok) return setMsg(data.error || "Lỗi");
@@ -93,8 +89,8 @@ export default function Home() {
                 </h2>
                 <p className="text-xs text-slate-500">
                   {isRegister
-                    ? "1 máy chỉ tạo 1 tài khoản • auto-login theo máy"
-                    : "Chỉ đăng nhập được trên đúng máy đã tạo tài khoản."}
+                    ? "1 máy chỉ tạo 1 tài khoản • đăng nhập theo mã máy"
+                    : "Đăng nhập tự động theo mã máy đã đăng ký."}
                 </p>
               </div>
               <button
@@ -113,12 +109,6 @@ export default function Home() {
                   placeholder="Họ tên"
                   value={reg.fullName}
                   onChange={(e) => setReg((s) => ({ ...s, fullName: e.target.value }))}
-                />
-                <input
-                  className="w-full rounded-xl border border-red-100 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm focus:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-200"
-                  placeholder="Username"
-                  value={reg.username}
-                  onChange={(e) => setReg((s) => ({ ...s, username: e.target.value }))}
                 />
 
                 <div className="rounded-2xl border border-dashed border-yellow-300 bg-[#FFF7D1] p-4">
@@ -165,12 +155,6 @@ export default function Home() {
               </div>
             ) : (
               <div className="space-y-4">
-                <input
-                  className="w-full rounded-xl border border-red-100 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm focus:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-200"
-                  placeholder="Username"
-                  value={loginUsername}
-                  onChange={(e) => setLoginUsername(e.target.value)}
-                />
                 <button
                   onClick={login}
                   className="w-full rounded-full bg-[#FBC02D] px-6 py-3 text-sm font-semibold text-slate-900 shadow-lg transition hover:bg-[#F9A825]"
