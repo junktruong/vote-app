@@ -48,7 +48,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const user = await User.create({ fullName, username, thumb, photo, deviceId });
+    const user = await User.create({ fullName, username, thumb, photo, photoUrl: thumb, deviceId });
     await setUserSession(String(user._id));
     return NextResponse.json({ ok: true });
   } catch (e: any) {

@@ -31,7 +31,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Không thể tải ảnh lên." }, { status: 400 });
     }
 
-    await User.findByIdAndUpdate(userId, { thumb, photo });
+    await User.findByIdAndUpdate(userId, { thumb, photo, photoUrl: thumb });
     return NextResponse.json({ ok: true, thumb, photo });
   } catch (error) {
     return NextResponse.json({ error: "Không thể tải ảnh lên." }, { status: 400 });
