@@ -21,7 +21,7 @@ function verify(signed: string | undefined | null) {
   return hmac(value) === sig ? value : null;
 }
 
-export async function getOrSetDeviceId() {
+export async function getOrSetDeviceId() { 
   const jar = await cookies();
   const existing = jar.get(DEVICE_COOKIE)?.value;
   if (existing) return existing;
