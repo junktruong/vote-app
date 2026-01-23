@@ -1,65 +1,73 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
+  const r = useRouter();
+  const [reg, setReg] = useState({ fullName: "", username: "", photoUrl: "" });
+  const [loginUsername, setLoginUsername] = useState("");
+  const [msg, setMsg] = useState("");
+
+  useEffect(() => {
+    fetch("/api/me").then(r=>r.json()).then(d=>{ if(d.user) r.push("/dashboard"); });
+  }, [r]);
+
+  async function register() {
+    setMsg("Đang tạo...");
+    const fd = new FormData();
+    fd.append("fullName", reg.fullName);
+    fd.append("username", reg.username);
+    fd.append("photoUrl", reg.photoUrl);
+
+    const res = await fetch("/api/register", { method: "POST", body: fd });
+    const data = await res.json();
+    if (!res.ok) return setMsg(data.error || "Lỗi");
+    r.push("/dashboard");
+  }
+
+  async function login() {
+    setMsg("Đang đăng nhập...");
+    const res = await fetch("/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: loginUsername }),
+    });
+    const data = await res.json();
+    if (!res.ok) return setMsg(data.error || "Lỗi");
+    r.push("/dashboard");
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main style={{ maxWidth: 980, margin: "0 auto", padding: 24, fontFamily: "system-ui" }}>
+      <h1>Trang bình chọn</h1>
+      <p style={{ opacity: 0.8 }}>1 máy chỉ tạo 1 tài khoản • auto-login theo máy</p>
+
+      <div style={{ display: "grid", gap: 16, gridTemplateColumns: "1fr 1fr" }}>
+        <section style={{ border: "1px solid #ddd", padding: 16, borderRadius: 12 }}>
+          <h2>Tạo tài khoản</h2>
+          <input placeholder="Họ tên" value={reg.fullName} onChange={e=>setReg(s=>({...s, fullName:e.target.value}))} />
+          <br/><br/>
+          <input placeholder="Username" value={reg.username} onChange={e=>setReg(s=>({...s, username:e.target.value}))} />
+          <br/><br/>
+          <input placeholder="Photo URL (dán link ảnh)" value={reg.photoUrl} onChange={e=>setReg(s=>({...s, photoUrl:e.target.value}))} />
+          <br/><br/>
+          <button onClick={register}>Tạo</button>
+        </section>
+
+        <section style={{ border: "1px solid #ddd", padding: 16, borderRadius: 12 }}>
+          <h2>Đăng nhập</h2>
+          <input placeholder="Username" value={loginUsername} onChange={e=>setLoginUsername(e.target.value)} />
+          <br/><br/>
+          <button onClick={login}>Đăng nhập</button>
+          <p style={{ opacity: 0.8, marginTop: 12 }}>
+            * Chỉ đăng nhập được trên đúng máy đã tạo tài khoản.
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+        </section>
+      </div>
+
+      <p style={{ marginTop: 16 }}>{msg}</p>
+      <p><a href="/admin">Admin</a></p>
+    </main>
   );
 }
