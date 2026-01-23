@@ -36,7 +36,8 @@ export async function POST(req: Request) {
       body: uploadForm,
     });
     const uploadData = await uploadRes.json();
-    photoUrl = uploadData?.data?.url || "";
+
+    photoUrl = uploadData?.data?.thumb.url || "";
     if (!uploadRes.ok || !photoUrl) {
       return NextResponse.json({ error: "Không thể tải ảnh lên." }, { status: 400 });
     }
