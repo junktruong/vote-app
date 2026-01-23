@@ -10,7 +10,7 @@ export async function PATCH(req: Request, { params }: Params) {
   if (!(await isAdmin())) return NextResponse.json({ error: "Chưa đăng nhập admin." }, { status: 401 });
   await dbConnect();
 
-  const pollId = params.id;
+  const pollId = (await params).id;
   const { title, maxVotes, showOnResults, isActive, revealWinner } = await req.json();
 
   if (showOnResults === true) {

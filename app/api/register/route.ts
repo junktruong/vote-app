@@ -52,6 +52,8 @@ export async function POST(req: Request) {
     await setUserSession(String(user._id));
     return NextResponse.json({ ok: true });
   } catch (e: any) {
+    console.log("error : ",e.message);
+    
     return NextResponse.json({ error: "Username đã tồn tại hoặc lỗi hệ thống." }, { status: 400 });
   }
 }
