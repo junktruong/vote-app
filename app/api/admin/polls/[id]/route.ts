@@ -4,7 +4,7 @@ import Poll from "@/models/Poll";
 import Vote from "@/models/Vote";
 import { isAdmin } from "@/lib/auth";
 
-type Params = { params: { id: string } };
+type Params = { params: Promise<{ id: string }> };
 
 export async function PATCH(req: Request, { params }: Params) {
   if (!(await isAdmin())) return NextResponse.json({ error: "Chưa đăng nhập admin." }, { status: 401 });
@@ -50,7 +50,7 @@ export async function DELETE(_req: Request, { params }: Params) {
   if (!(await isAdmin())) return NextResponse.json({ error: "Chưa đăng nhập admin." }, { status: 401 });
   await dbConnect();
 
-  const pollId = params.id;
+  const pollId = (await params).id;
   await Vote.deleteMany({ pollId });
   const poll = await Poll.findByIdAndDelete(pollId);
   if (!poll) return NextResponse.json({ error: "Không tìm thấy poll." }, { status: 404 });
