@@ -3,6 +3,33 @@
 import { useEffect, useId, useState } from "react";
 import { useRouter } from "next/navigation";
 
+function isInAppBrowser(userAgent: string) {
+  const patterns = [
+    /Zalo/i,
+    /FBAN|FBAV|Messenger|Meta/i,
+    /Instagram/i,
+    /Line/i,
+    /TikTok/i,
+    /Snapchat/i,
+    /LinkedInApp/i,
+  ];
+  return patterns.some((pattern) => pattern.test(userAgent));
+}
+
+function openInDefaultBrowser(url: string, userAgent: string) {
+  const isAndroid = /Android/i.test(userAgent);
+  if (isAndroid) {
+    const parsed = new URL(url);
+    const scheme = parsed.protocol.replace(":", "") || "https";
+    const cleanUrl = `${parsed.host}${parsed.pathname}${parsed.search}${parsed.hash}`;
+    const intentUrl = `intent://${cleanUrl}#Intent;scheme=${scheme};package=com.android.chrome;end`;
+    window.location.href = intentUrl;
+    return;
+  }
+
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
 export default function Home() {
   const r = useRouter();
   const photoInputId = useId();
@@ -11,6 +38,7 @@ export default function Home() {
   const [msg, setMsg] = useState("");
   const [photoName, setPhotoName] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [inAppBrowser, setInAppBrowser] = useState(false);
 
   useEffect(() => {
     fetch("/api/me")
@@ -19,6 +47,15 @@ export default function Home() {
         if (d.user) r.push("/dashboard");
       });
   }, [r]);
+
+  useEffect(() => {
+    const ua = navigator.userAgent || "";
+    const detectedInAppBrowser = isInAppBrowser(ua);
+    setInAppBrowser(detectedInAppBrowser);
+    if (detectedInAppBrowser) {
+      openInDefaultBrowser(window.location.href, ua);
+    }
+  }, []);
 
   async function register() {
     setMsg("Đang tạo...");
@@ -101,6 +138,22 @@ export default function Home() {
                 {isRegister ? "Chuyển sang đăng nhập" : "Chuyển sang đăng ký"}
               </button>
             </div>
+
+            {inAppBrowser ? (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-800">
+                Bạn đang mở trong trình duyệt của ứng dụng. Hệ thống sẽ cố gắng chuyển sang trình duyệt mặc
+                định để đăng nhập ổn định hơn.
+                <div className="mt-2">
+                  <button
+                    type="button"
+                    onClick={() => openInDefaultBrowser(window.location.href, navigator.userAgent || "")}
+                    className="font-semibold text-amber-900 underline underline-offset-2"
+                  >
+                    Mở bằng trình duyệt mặc định
+                  </button>
+                </div>
+              </div>
+            ) : null}
 
             {isRegister ? (
               <div className="space-y-4">
