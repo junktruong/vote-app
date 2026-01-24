@@ -3,6 +3,6 @@ import { clearUserSession } from "@/lib/auth";
 
 export async function GET() {
   await clearUserSession();
-  return NextResponse.redirect(new URL("/"));
+  return NextResponse.redirect(new URL("/","https://vote-app-silk.vercel.app/"));
 }
     
