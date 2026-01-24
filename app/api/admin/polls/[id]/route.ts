@@ -56,4 +56,4 @@ export async function DELETE(_req: Request, { params }: Params) {
   if (!poll) return NextResponse.json({ error: "Không tìm thấy poll." }, { status: 404 });
 
   return NextResponse.json({ ok: true });
-}
+} 
