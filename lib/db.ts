@@ -15,7 +15,15 @@ async function ensureIndexes(conn: typeof mongoose) {
   if (global.__mongooseIndexesEnsured) return;
   global.__mongooseIndexesEnsured = true;
 
-  const db = conn.connection.db;
+  const connection = conn.connection;
+  if (!connection.db) {
+    await connection.asPromise();
+  }
+  const db = connection.db;
+  if (!db) {
+    global.__mongooseIndexesEnsured = false;
+    throw new Error("Database connection not ready for index creation");
+  }
 
   // Fix legacy non-partial unique index that blocks inserts when username is null/missing.
   const users = db.collection("users");
