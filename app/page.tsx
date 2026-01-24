@@ -3,15 +3,42 @@
 import { useEffect, useId, useState } from "react";
 import { useRouter } from "next/navigation";
 
+function isInAppBrowser(userAgent: string) {
+  const patterns = [
+    /Zalo/i,
+    /FBAN|FBAV|Messenger|Meta/i,
+    /Instagram/i,
+    /Line/i,
+    /TikTok/i,
+    /Snapchat/i,
+    /LinkedInApp/i,
+  ];
+  return patterns.some((pattern) => pattern.test(userAgent));
+}
+
+function openInDefaultBrowser(url: string, userAgent: string) {
+  const isAndroid = /Android/i.test(userAgent);
+  if (isAndroid) {
+    const parsed = new URL(url);
+    const scheme = parsed.protocol.replace(":", "") || "https";
+    const cleanUrl = `${parsed.host}${parsed.pathname}${parsed.search}${parsed.hash}`;
+    const intentUrl = `intent://${cleanUrl}#Intent;scheme=${scheme};package=com.android.chrome;end`;
+    window.location.href = intentUrl;
+    return;
+  }
+
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
 export default function Home() {
   const r = useRouter();
   const photoInputId = useId();
-  const [reg, setReg] = useState({ fullName: "", username: "", photoUrl: "" });
-  const [loginUsername, setLoginUsername] = useState("");
+  const [reg, setReg] = useState({ fullName: "", photoUrl: "" });
   const [mode, setMode] = useState<"register" | "login">("register");
   const [msg, setMsg] = useState("");
   const [photoName, setPhotoName] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [inAppBrowser, setInAppBrowser] = useState(false);
 
   useEffect(() => {
     fetch("/api/me")
@@ -21,6 +48,15 @@ export default function Home() {
       });
   }, [r]);
 
+  useEffect(() => {
+    const ua = navigator.userAgent || "";
+    const detectedInAppBrowser = isInAppBrowser(ua);
+    setInAppBrowser(detectedInAppBrowser);
+    if (detectedInAppBrowser) {
+      openInDefaultBrowser(window.location.href, ua);
+    }
+  }, []);
+
   async function register() {
     setMsg("Đang tạo...");
     if (!photoFile) {
@@ -29,7 +65,6 @@ export default function Home() {
     }
     const fd = new FormData();
     fd.append("fullName", reg.fullName);
-    fd.append("username", reg.username);
     fd.append("photo", photoFile);
 
     const res = await fetch("/api/register", { method: "POST", body: fd });
@@ -42,8 +77,6 @@ export default function Home() {
     setMsg("Đang đăng nhập...");
     const res = await fetch("/api/login", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: loginUsername }),
     });
     const data = await res.json();
     if (!res.ok) return setMsg(data.error || "Lỗi");
@@ -93,8 +126,8 @@ export default function Home() {
                 </h2>
                 <p className="text-xs text-slate-500">
                   {isRegister
-                    ? "1 máy chỉ tạo 1 tài khoản • auto-login theo máy"
-                    : "Chỉ đăng nhập được trên đúng máy đã tạo tài khoản."}
+                    ? "1 máy chỉ tạo 1 tài khoản • đăng nhập theo mã máy"
+                    : "Đăng nhập tự động theo mã máy đã đăng ký."}
                 </p>
               </div>
               <button
@@ -106,6 +139,22 @@ export default function Home() {
               </button>
             </div>
 
+            {inAppBrowser ? (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-800">
+                Bạn đang mở trong trình duyệt của ứng dụng. Hệ thống sẽ cố gắng chuyển sang trình duyệt mặc
+                định để đăng nhập ổn định hơn.
+                <div className="mt-2">
+                  <button
+                    type="button"
+                    onClick={() => openInDefaultBrowser(window.location.href, navigator.userAgent || "")}
+                    className="font-semibold text-amber-900 underline underline-offset-2"
+                  >
+                    Mở bằng trình duyệt mặc định
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
             {isRegister ? (
               <div className="space-y-4">
                 <input
@@ -113,12 +162,6 @@ export default function Home() {
                   placeholder="Họ tên"
                   value={reg.fullName}
                   onChange={(e) => setReg((s) => ({ ...s, fullName: e.target.value }))}
-                />
-                <input
-                  className="w-full rounded-xl border border-red-100 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm focus:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-200"
-                  placeholder="Username"
-                  value={reg.username}
-                  onChange={(e) => setReg((s) => ({ ...s, username: e.target.value }))}
                 />
 
                 <div className="rounded-2xl border border-dashed border-yellow-300 bg-[#FFF7D1] p-4">
@@ -165,12 +208,6 @@ export default function Home() {
               </div>
             ) : (
               <div className="space-y-4">
-                <input
-                  className="w-full rounded-xl border border-red-100 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm focus:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-200"
-                  placeholder="Username"
-                  value={loginUsername}
-                  onChange={(e) => setLoginUsername(e.target.value)}
-                />
                 <button
                   onClick={login}
                   className="w-full rounded-full bg-[#FBC02D] px-6 py-3 text-sm font-semibold text-slate-900 shadow-lg transition hover:bg-[#F9A825]"

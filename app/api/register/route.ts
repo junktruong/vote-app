@@ -2,21 +2,19 @@ import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/db";
 import User from "@/models/User";
 import { getOrSetDeviceId, setUserSession } from "@/lib/auth";
+import { getClientIp } from "@/lib/request";
 
 export async function POST(req: Request) {
   await dbConnect();
   const deviceId = await getOrSetDeviceId();
+  const clientIp = await getClientIp();
 
   const form = await req.formData();
   const fullName = String(form.get("fullName") || "").trim();
-  const username = String(form.get("username") || "").trim();
   const photoFile = form.get("photo");
 
-  if (!fullName || !username || !photoFile) {
+  if (!fullName || !photoFile) {
     return NextResponse.json({ error: "Thiếu thông tin." }, { status: 400 });
-  }
-  if (!/^[a-zA-Z0-9_.]{3,30}$/.test(username)) {
-    return NextResponse.json({ error: "Username chỉ gồm a-z A-Z 0-9 _ . (3-30 ký tự)" }, { status: 400 });
   }
   if (!(photoFile instanceof File)) {
     return NextResponse.json({ error: "Ảnh đại diện không hợp lệ." }, { status: 400 });
@@ -24,6 +22,16 @@ export async function POST(req: Request) {
 
   const existedDevice = await User.findOne({ deviceId }).lean();
   if (existedDevice) return NextResponse.json({ error: "Máy này đã tạo tài khoản rồi." }, { status: 400 });
+
+  if (clientIp) {
+    const existedIp = await User.findOne({ lastKnownIp: clientIp }).lean();
+    if (existedIp) {
+      return NextResponse.json(
+        { error: "IP này đã tạo tài khoản rồi. Vui lòng đăng nhập trên máy đó." },
+        { status: 400 }
+      );
+    }
+  }
 
   const apiKey = process.env.IMGBB_API_KEY ?? "5a3bdb946de1c12c9e08eceab90e406f";
   const uploadForm = new FormData();
@@ -48,12 +56,12 @@ export async function POST(req: Request) {
   }
 
   try {
-    const user = await User.create({ fullName, username, thumb, photo, deviceId });
+    const user = await User.create({ fullName, thumb, photo, deviceId, lastKnownIp: clientIp || undefined });
     await setUserSession(String(user._id));
     return NextResponse.json({ ok: true });
   } catch (e: any) {
-    console.log("error : ",e.message);
-    
-    return NextResponse.json({ error: "Username đã tồn tại hoặc lỗi hệ thống." }, { status: 400 });
+    console.log("error : ", e.message);
+
+    return NextResponse.json({ error: "Không thể tạo tài khoản. Vui lòng thử lại." }, { status: 400 });
   }
 }
