@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 
-export function getClientIp() {
-  const headerList = headers();
+export async function getClientIp() {
+  const headerList = await headers();
   const forwardedFor = headerList.get("x-forwarded-for");
   if (forwardedFor) {
     const ip = forwardedFor.split(",")[0]?.trim();

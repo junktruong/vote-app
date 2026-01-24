@@ -7,7 +7,7 @@ import { getClientIp } from "@/lib/request";
 export async function POST(req: Request) {
   await dbConnect();
   const deviceId = await getOrSetDeviceId();
-  const clientIp = getClientIp();
+  const clientIp = await getClientIp();
 
   let user = await User.findOne({ deviceId });
   if (!user && clientIp) {
