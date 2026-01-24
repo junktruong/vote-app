@@ -2,7 +2,9 @@
 
 import { useEffect, useId, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image"; // Dùng thẻ img thường nếu không config next/image, ở đây mình dùng thẻ img native cho đơn giản với logic cũ
 
+// --- LOGIC HELPER FUNCTIONS (GIỮ NGUYÊN) ---
 function isInAppBrowser(userAgent: string) {
   const patterns = [
     /Zalo/i,
@@ -26,20 +28,22 @@ function openInDefaultBrowser(url: string, userAgent: string) {
     window.location.href = intentUrl;
     return;
   }
-
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
 export default function Home() {
   const r = useRouter();
   const photoInputId = useId();
+  
+  // --- STATE (GIỮ NGUYÊN) ---
   const [reg, setReg] = useState({ fullName: "", photoUrl: "" });
   const [mode, setMode] = useState<"register" | "login">("register");
   const [msg, setMsg] = useState("");
-  const [photoName, setPhotoName] = useState("");
+  const [photoName, setPhotoName] = useState(""); // Vẫn giữ biến này để logic không đổi, dù UI có thể không hiển thị tên file text
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [inAppBrowser, setInAppBrowser] = useState(false);
 
+  // --- EFFECTS (GIỮ NGUYÊN) ---
   useEffect(() => {
     fetch("/api/me")
       .then((res) => res.json())
@@ -57,8 +61,9 @@ export default function Home() {
     }
   }, []);
 
+  // --- HANDLERS (GIỮ NGUYÊN) ---
   async function register() {
-    setMsg("Đang tạo...");
+    setMsg("Đang khởi tạo...");
     if (!photoFile) {
       setMsg("Vui lòng chọn ảnh đại diện.");
       return;
@@ -67,20 +72,26 @@ export default function Home() {
     fd.append("fullName", reg.fullName);
     fd.append("photo", photoFile);
 
-    const res = await fetch("/api/register", { method: "POST", body: fd });
-    const data = await res.json();
-    if (!res.ok) return setMsg(data.error || "Lỗi");
-    r.push("/dashboard");
+    try {
+      const res = await fetch("/api/register", { method: "POST", body: fd });
+      const data = await res.json();
+      if (!res.ok) return setMsg(data.error || "Lỗi đăng ký");
+      r.push("/dashboard");
+    } catch (e) {
+      setMsg("Lỗi kết nối server");
+    }
   }
 
   async function login() {
     setMsg("Đang đăng nhập...");
-    const res = await fetch("/api/login", {
-      method: "POST",
-    });
-    const data = await res.json();
-    if (!res.ok) return setMsg(data.error || "Lỗi");
-    r.push("/dashboard");
+    try {
+      const res = await fetch("/api/login", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) return setMsg(data.error || "Lỗi đăng nhập");
+      r.push("/dashboard");
+    } catch (e) {
+      setMsg("Lỗi kết nối server");
+    }
   }
 
   function handlePhotoChange(event: React.ChangeEvent<HTMLInputElement>) {
@@ -98,131 +109,172 @@ export default function Home() {
   const isRegister = mode === "register";
 
   return (
-    <main className="min-h-screen bg-[#FFFAF0] text-slate-900">
-      <div className="relative flex min-h-screen items-center justify-center px-4 py-10">
-        <div className="absolute inset-0 opacity-40">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(251,192,45,0.18),_transparent_55%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(211,47,47,0.16),_transparent_60%)]" />
-        </div>
+    <main className="min-h-screen bg-[#FFFAF0] text-slate-900 selection:bg-red-100">
+      {/* Background Decor */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-[radial-gradient(ellipse_at_center,_rgba(251,192,45,0.15),_transparent_70%)]" />
+        <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-[radial-gradient(circle_at_bottom_right,_rgba(211,47,47,0.1),_transparent_70%)]" />
+      </div>
 
-        <div className="relative flex w-full max-w-xl flex-col gap-6 rounded-3xl border border-red-100 bg-white/95 p-6 shadow-lg backdrop-blur sm:p-8">
-          <div className="flex flex-col gap-3 text-center">
-            <span className="mx-auto w-fit rounded-full border border-red-200 bg-white px-4 py-1 text-xs font-semibold text-red-700">
-              Tết 2025 • Chúc mừng năm mới
-            </span>
-            <h1 className="text-2xl font-bold text-red-700 sm:text-3xl">
-              An khang thịnh vượng, vạn sự như ý.
+      <div className="relative flex min-h-screen items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          
+          {/* Header Card */}
+          <div className="mb-6 text-center">
+            <div className="inline-block rounded-full bg-red-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-red-700">
+              Xuân Ất Tỵ 2025
+            </div>
+            <h1 className="mt-4 text-3xl font-extrabold text-slate-900">
+              Cổng Bình Chọn
             </h1>
-            <p className="text-sm text-slate-600">
-              Chỉ còn lại phần đăng ký và đăng nhập để bạn bắt đầu bình chọn nhanh chóng.
+            <p className="mt-2 text-sm text-slate-500">
+              Vui lòng định danh để tham gia hệ thống
             </p>
           </div>
 
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-red-700">
-                  {isRegister ? "Đăng ký tài khoản" : "Đăng nhập"}
-                </h2>
-                <p className="text-xs text-slate-500">
-                  {isRegister
-                    ? "1 máy chỉ tạo 1 tài khoản • đăng nhập theo mã máy"
-                    : "Đăng nhập tự động theo mã máy đã đăng ký."}
-                </p>
-              </div>
+          {/* Main Card */}
+          <div className="overflow-hidden rounded-3xl bg-white shadow-xl ring-1 ring-slate-900/5">
+            
+            {/* Tab Switcher */}
+            <div className="grid grid-cols-2 border-b border-slate-100 bg-slate-50/50 p-2">
               <button
-                type="button"
-                onClick={() => setMode(isRegister ? "login" : "register")}
-                className="inline-flex items-center justify-center rounded-full border border-red-200 px-4 py-2 text-xs font-semibold text-red-700 transition hover:border-red-300 hover:text-red-600"
+                onClick={() => setMode("register")}
+                className={`rounded-xl py-2.5 text-sm font-semibold transition-all ${
+                  isRegister
+                    ? "bg-white text-red-600 shadow-sm ring-1 ring-slate-200"
+                    : "text-slate-500 hover:text-slate-700"
+                }`}
               >
-                {isRegister ? "Chuyển sang đăng nhập" : "Chuyển sang đăng ký"}
+                Đăng ký mới
+              </button>
+              <button
+                onClick={() => setMode("login")}
+                className={`rounded-xl py-2.5 text-sm font-semibold transition-all ${
+                  !isRegister
+                    ? "bg-white text-red-600 shadow-sm ring-1 ring-slate-200"
+                    : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                Đăng nhập lại
               </button>
             </div>
 
-            {inAppBrowser ? (
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-800">
-                Bạn đang mở trong trình duyệt của ứng dụng. Hệ thống sẽ cố gắng chuyển sang trình duyệt mặc
-                định để đăng nhập ổn định hơn.
-                <div className="mt-2">
+            <div className="p-6 sm:p-8">
+              {/* Cảnh báo In-App Browser */}
+              {inAppBrowser && (
+                <div className="mb-6 rounded-2xl bg-amber-50 p-4 text-xs text-amber-800 ring-1 ring-amber-200">
+                  <p className="font-bold">⚠️ Lưu ý trình duyệt</p>
+                  <p className="mt-1">
+                    Hệ thống hoạt động tốt nhất trên Chrome/Safari. 
+                  </p>
                   <button
-                    type="button"
                     onClick={() => openInDefaultBrowser(window.location.href, navigator.userAgent || "")}
-                    className="font-semibold text-amber-900 underline underline-offset-2"
+                    className="mt-2 font-semibold underline decoration-amber-800/50 underline-offset-2"
                   >
-                    Mở bằng trình duyệt mặc định
+                    Mở trình duyệt mặc định &rarr;
                   </button>
                 </div>
-              </div>
-            ) : null}
+              )}
 
-            {isRegister ? (
-              <div className="space-y-4">
-                <input
-                  className="w-full rounded-xl border border-red-100 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm focus:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-200"
-                  placeholder="Họ tên"
-                  value={reg.fullName}
-                  onChange={(e) => setReg((s) => ({ ...s, fullName: e.target.value }))}
-                />
-
-                <div className="rounded-2xl border border-dashed border-yellow-300 bg-[#FFF7D1] p-4">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-sm font-semibold text-yellow-700">Ảnh đại diện</p>
-                      <p className="text-xs text-slate-600">
-                        Chụp ảnh hoặc chọn ảnh trong máy để tham gia bình chọn.
-                      </p>
-                      {photoName ? (
-                        <p className="mt-2 text-xs font-medium text-slate-700">Đã chọn: {photoName}</p>
-                      ) : null}
+              {/* Form Content */}
+              {isRegister ? (
+                <div className="space-y-6">
+                  {/* Avatar Upload - Thiết kế dạng tròn trung tâm */}
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="relative group">
+                      <label
+                        htmlFor={photoInputId}
+                        className="relative flex h-28 w-28 cursor-pointer items-center justify-center overflow-hidden rounded-full border-4 border-slate-50 bg-slate-100 shadow-md transition-transform active:scale-95 group-hover:border-red-100"
+                      >
+                        {reg.photoUrl ? (
+                          <img
+                            src={reg.photoUrl}
+                            alt="Preview"
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex flex-col items-center text-slate-400">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8 mb-1">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
+                            </svg>
+                            <span className="text-[10px] font-semibold uppercase">Chọn ảnh</span>
+                          </div>
+                        )}
+                        {/* Overlay khi hover */}
+                        <div className="absolute inset-0 bg-black/10 opacity-0 transition-opacity group-hover:opacity-100" />
+                      </label>
+                      <input
+                        id={photoInputId}
+                        type="file"
+                        accept="image/*"
+                        capture="environment" // Hỗ trợ mở camera trên mobile
+                        className="hidden"
+                        onChange={handlePhotoChange}
+                      />
                     </div>
-                    <label
-                      htmlFor={photoInputId}
-                      className="inline-flex cursor-pointer items-center justify-center rounded-full bg-[#D32F2F] px-5 py-2 text-sm font-semibold text-white shadow-md transition hover:bg-[#B71C1C]"
-                    >
-                      Chọn ảnh
+                    <p className="text-xs text-slate-500">Chạm để tải ảnh đại diện của bạn</p>
+                  </div>
+
+                  {/* Name Input */}
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-slate-700">
+                      Họ và Tên
                     </label>
                     <input
-                      id={photoInputId}
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      className="hidden"
-                      onChange={handlePhotoChange}
+                      type="text"
+                      className="w-full rounded-xl border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:border-red-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-red-500/10"
+                      placeholder="Nhập tên của bạn..."
+                      value={reg.fullName}
+                      onChange={(e) => setReg((s) => ({ ...s, fullName: e.target.value }))}
                     />
                   </div>
-                  {reg.photoUrl ? (
-                    <img
-                      src={reg.photoUrl}
-                      alt="Ảnh đại diện"
-                      className="mt-4 h-32 w-32 rounded-2xl object-cover shadow"
-                    />
-                  ) : null}
+
+                  {/* Register Button */}
+                  <button
+                    onClick={register}
+                    className="w-full rounded-xl bg-red-600 px-4 py-3.5 text-sm font-bold text-white shadow-lg shadow-red-600/20 transition-all hover:bg-red-700 hover:shadow-red-600/30 active:translate-y-0.5"
+                  >
+                    Tạo tài khoản ngay
+                  </button>
                 </div>
+              ) : (
+                <div className="py-4 space-y-6">
+                  <div className="rounded-2xl border border-yellow-200 bg-yellow-50 p-4 text-center">
+                    <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-yellow-100 text-xl">
+                      📱
+                    </div>
+                    <h3 className="text-sm font-bold text-yellow-800">Cơ chế đăng nhập</h3>
+                    <p className="mt-1 text-xs text-yellow-700/80">
+                      Hệ thống tự động nhận diện thiết bị của bạn. Không cần mật khẩu.
+                    </p>
+                  </div>
 
-                <button
-                  onClick={register}
-                  className="w-full rounded-full bg-[#D32F2F] px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-[#B71C1C]"
-                >
-                  Tạo tài khoản
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <button
-                  onClick={login}
-                  className="w-full rounded-full bg-[#FBC02D] px-6 py-3 text-sm font-semibold text-slate-900 shadow-lg transition hover:bg-[#F9A825]"
-                >
-                  Đăng nhập
-                </button>
-              </div>
-            )}
-          </div>
+                  <button
+                    onClick={login}
+                    className="w-full rounded-xl bg-yellow-400 px-4 py-3.5 text-sm font-bold text-yellow-900 shadow-lg shadow-yellow-400/20 transition-all hover:bg-yellow-500 hover:shadow-yellow-400/30 active:translate-y-0.5"
+                  >
+                    Đăng nhập vào hệ thống
+                  </button>
+                </div>
+              )}
 
-          <div className="flex flex-col gap-3 rounded-2xl border border-red-100 bg-white/80 p-4 text-sm text-slate-700 sm:flex-row sm:items-center sm:justify-between">
-            <span>{msg}</span>
-            <a className="font-semibold text-red-700 hover:text-red-600" href="/admin">
-              Quản trị hệ thống
-            </a>
+              {/* Status Message */}
+              {msg && (
+                <div className="mt-6 flex items-center justify-center gap-2 text-sm font-medium text-slate-600 animate-pulse">
+                   {/* Icon nhỏ minh họa loading hoặc info */}
+                   <span>🔔</span>
+                   <span>{msg}</span>
+                </div>
+              )}
+            </div>
+            
+            {/* Footer Card */}
+            <div className="border-t border-slate-100 bg-slate-50 p-4 text-center">
+              <a href="/admin" className="text-xs font-medium text-slate-400 hover:text-red-600 transition-colors">
+                Trang quản trị (Admin only)
+              </a>
+            </div>
           </div>
         </div>
       </div>

@@ -2,59 +2,93 @@ import Link from "next/link";
 import AvatarPanel from "./avatar-panel";
 
 export default async function Dashboard() {
-  const meRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL ?? ""}/api/me`, { cache: "no-store" }).catch(()=>null);
+const meRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL ?? ""}/api/me`, { cache: "no-store" }).catch(() => null);
 
-  // Nếu deploy Vercel bạn không cần NEXT_PUBLIC_BASE_URL; cách đơn giản hơn là dùng client.
-  // Để nhanh: cho phép render basic links.
   return (
-    <main className="min-h-screen bg-[#FFFAF0] text-slate-900">
-      <div className="relative overflow-hidden">
-        <div className="absolute inset-0 opacity-40">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(251,192,45,0.18),_transparent_55%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(211,47,47,0.16),_transparent_60%)]" />
-          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/flowers.png')] opacity-30" />
-        </div>
+    <main className="min-h-screen bg-[#FFFAF0] text-slate-900 selection:bg-red-100">
+      {/* Background nhẹ nhàng hơn */}
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(251,192,45,0.1),_transparent_40%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,_rgba(211,47,47,0.1),_transparent_40%)]" />
+      </div>
 
-        <div className="relative mx-auto flex max-w-5xl flex-col gap-10 px-6 pb-16 pt-14">
-          <header className="rounded-3xl border border-red-100 bg-white/85 p-6 shadow-md">
-            <p className="text-sm font-semibold text-red-700">Tết an khang</p>
-            <h1 className="mt-3 text-3xl font-bold text-red-700">Dashboard</h1>
-            <p className="mt-2 text-sm text-slate-600">Trang kết quả tự refresh 2s/lần.</p>
-          </header>
+      <div className="relative mx-auto max-w-4xl px-6 py-12">
+        {/* HEADER: Gồm Chào mừng + Avatar */}
+        <header className="mb-10 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
+          <div>
+            <span className="text-sm font-bold uppercase tracking-wider text-red-600">
+              Xuân Ất Tỵ 2025
+            </span>
+            <h1 className="text-3xl font-extrabold text-slate-900 md:text-4xl">
+              Dashboard
+            </h1>
+          </div>
+          {/* AvatarPanel đưa lên đây cho hợp lý */}
+          <div className="flex-shrink-0">
+             <AvatarPanel />
+          </div>
+        </header>
 
-          <section className="grid gap-6 md:grid-cols-2">
-            <div className="rounded-3xl border border-yellow-100 bg-white/95 p-6 shadow-md">
-              <h2 className="text-lg font-semibold text-slate-900">Điều hướng nhanh</h2>
-              <p className="mt-2 text-sm text-slate-600">Chọn một hành động để tiếp tục trải nghiệm Tết.</p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Link className="rounded-full bg-[#D32F2F] px-5 py-2 text-sm font-semibold text-white shadow hover:bg-[#B71C1C]" href="/vote">
-                  Đi bình chọn
-                </Link>
-                <Link className="rounded-full bg-[#FBC02D] px-5 py-2 text-sm font-semibold text-slate-900 shadow hover:bg-[#F9A825]" href="/results">
-                  Xem kết quả
-                </Link>
-                <Link className="rounded-full border border-red-200 px-5 py-2 text-sm font-semibold text-red-700 shadow-sm hover:bg-red-50" href="/admin">
-                  Admin
-                </Link>
-                <Link className="rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-600 shadow-sm hover:bg-slate-50" href="/logout">
-                  Logout
-                </Link>
-              </div>
+        {/* MAIN ACTIONS GRID */}
+        <section className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          
+          {/* Card 1: Bình chọn (Quan trọng nhất - Màu đỏ) */}
+          <Link 
+            href="/vote"
+            className="group relative overflow-hidden rounded-3xl bg-red-600 p-6 text-white shadow-lg transition-transform hover:-translate-y-1 hover:shadow-xl"
+          >
+            <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/10 transition-all group-hover:scale-150" />
+            <h3 className="relative text-xl font-bold">Đi bình chọn</h3>
+            <p className="relative mt-2 text-red-100 text-sm">
+              Tham gia bình chọn ngay cho các hạng mục Tết.
+            </p>
+            <div className="relative mt-4 inline-flex items-center text-sm font-semibold text-white group-hover:underline">
+              Bắt đầu ngay &rarr;
             </div>
+          </Link>
 
-            <div className="rounded-3xl border border-red-100 bg-white/95 p-6 shadow-md">
-              <h2 className="text-lg font-semibold text-red-700">Không khí Tết</h2>
-              <p className="mt-2 text-sm text-slate-600">
-                Duy trì tinh thần rộn ràng với giao diện sáng sủa, gọn gàng và nổi bật sắc đỏ may mắn.
-              </p>
-              <div className="mt-5 rounded-2xl border border-yellow-200 bg-[#FFF7D1] p-4 text-sm text-slate-700">
-                Ưu tiên thao tác nhanh: bình chọn, xem bảng xếp hạng và cập nhật kết quả thời gian thực.
-              </div>
+          {/* Card 2: Xem kết quả (Quan trọng nhì - Màu vàng) */}
+          <Link 
+            href="/results"
+            className="group relative overflow-hidden rounded-3xl bg-yellow-400 p-6 text-slate-900 shadow-lg transition-transform hover:-translate-y-1 hover:shadow-xl"
+          >
+            <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/20 transition-all group-hover:scale-150" />
+            <h3 className="relative text-xl font-bold">Xem kết quả</h3>
+            <p className="relative mt-2 text-slate-800 text-sm">
+              Cập nhật bảng xếp hạng thời gian thực.
+            </p>
+            <div className="relative mt-4 inline-flex items-center text-sm font-semibold text-slate-900 group-hover:underline">
+              Xem chi tiết &rarr;
             </div>
-          </section>
+          </Link>
 
-          <AvatarPanel />
-        </div>
+          {/* Các tác vụ phụ: Admin & Logout gộp vào cột hoặc để riêng tùy số lượng */}
+          <div className="flex flex-col gap-4 md:col-span-2 lg:col-span-1">
+            {/* Admin Link */}
+            <Link 
+              href="/admin"
+              className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-colors hover:border-red-200 hover:bg-red-50"
+            >
+              <div>
+                <h3 className="font-semibold text-slate-900">Quản trị viên</h3>
+                <p className="text-xs text-slate-500">Dành cho BTC</p>
+              </div>
+              <span className="text-slate-400">⚙️</span>
+            </Link>
+
+            {/* Logout Link */}
+            <Link 
+              href="/logout"
+              className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
+            >
+              <div>
+                <h3 className="font-semibold text-slate-700">Đăng xuất</h3>
+              </div>
+              <span className="text-slate-400">👋</span>
+            </Link>
+          </div>
+
+        </section>
       </div>
     </main>
   );
