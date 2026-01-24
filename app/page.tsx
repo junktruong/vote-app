@@ -135,7 +135,7 @@ export default function Home() {
           {/* Header Card */}
           <div className="mb-6 text-center">
             <div className="inline-block rounded-full bg-red-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-red-700">
-              Xuân Ất Tỵ 2025
+              Xuân Bính Ngọ 2026
             </div>
             <h1 className="mt-4 text-3xl font-extrabold text-slate-900">
               Cổng Bình Chọn

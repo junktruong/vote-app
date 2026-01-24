@@ -17,7 +17,7 @@ const meRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL ?? ""}/api/me`, { 
         <header className="mb-10 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
           <div>
             <span className="text-sm font-bold uppercase tracking-wider text-red-600">
-              Xuân Ất Tỵ 2025
+              Xuân Bính Ngọ 2026
             </span>
             <h1 className="text-3xl font-extrabold text-slate-900 md:text-4xl">
               Dashboard
