@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image"; // Dùng thẻ img thường nếu không config next/image, ở đây mình dùng thẻ img native cho đơn giản với logic cũ
 
@@ -34,6 +34,8 @@ function openInDefaultBrowser(url: string, userAgent: string) {
 export default function Home() {
   const r = useRouter();
   const photoInputId = useId();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   
   // --- STATE (GIỮ NGUYÊN) ---
   const [reg, setReg] = useState({ fullName: "", photoUrl: "" });
@@ -42,6 +44,7 @@ export default function Home() {
   const [photoName, setPhotoName] = useState(""); // Vẫn giữ biến này để logic không đổi, dù UI có thể không hiển thị tên file text
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [inAppBrowser, setInAppBrowser] = useState(false);
+  const [showPhotoOptions, setShowPhotoOptions] = useState(false);
 
   // --- EFFECTS (GIỮ NGUYÊN) ---
   useEffect(() => {
@@ -104,6 +107,16 @@ export default function Home() {
       setReg((s) => ({ ...s, photoUrl: String(reader.result || "") }));
     };
     reader.readAsDataURL(file);
+  }
+
+  function openFilePicker() {
+    fileInputRef.current?.click();
+    setShowPhotoOptions(false);
+  }
+
+  function openCameraPicker() {
+    cameraInputRef.current?.click();
+    setShowPhotoOptions(false);
   }
 
   const isRegister = mode === "register";
@@ -182,9 +195,12 @@ export default function Home() {
                   {/* Avatar Upload - Thiết kế dạng tròn trung tâm */}
                   <div className="flex flex-col items-center gap-3">
                     <div className="relative group">
-                      <label
-                        htmlFor={photoInputId}
+                      <button
+                        type="button"
+                        onClick={() => setShowPhotoOptions((s) => !s)}
                         className="relative flex h-28 w-28 cursor-pointer items-center justify-center overflow-hidden rounded-full border-4 border-slate-50 bg-slate-100 shadow-md transition-transform active:scale-95 group-hover:border-red-100"
+                        aria-haspopup="dialog"
+                        aria-expanded={showPhotoOptions}
                       >
                         {reg.photoUrl ? (
                           <img
@@ -203,17 +219,53 @@ export default function Home() {
                         )}
                         {/* Overlay khi hover */}
                         <div className="absolute inset-0 bg-black/10 opacity-0 transition-opacity group-hover:opacity-100" />
-                      </label>
+                      </button>
+                      {showPhotoOptions && (
+                        <div className="absolute left-1/2 top-full z-10 mt-3 w-56 -translate-x-1/2 rounded-2xl border border-slate-200 bg-white p-2 text-sm shadow-xl">
+                          <button
+                            type="button"
+                            onClick={openFilePicker}
+                            className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-slate-700 transition hover:bg-slate-100"
+                          >
+                            <span>Chọn ảnh từ thư viện</span>
+                            <span className="text-slate-400">📁</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={openCameraPicker}
+                            className="mt-1 flex w-full items-center justify-between rounded-xl px-3 py-2 text-slate-700 transition hover:bg-slate-100"
+                          >
+                            <span>Chụp ảnh mới</span>
+                            <span className="text-slate-400">📷</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setShowPhotoOptions(false)}
+                            className="mt-1 flex w-full items-center justify-center rounded-xl px-3 py-2 text-slate-500 transition hover:bg-slate-100"
+                          >
+                            Hủy
+                          </button>
+                        </div>
+                      )}
                       <input
                         id={photoInputId}
                         type="file"
                         accept="image/*"
-                        capture="environment" // Hỗ trợ mở camera trên mobile
                         className="hidden"
+                        ref={fileInputRef}
+                        onChange={handlePhotoChange}
+                      />
+                      <input
+                        id={`${photoInputId}-camera`}
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        className="hidden"
+                        ref={cameraInputRef}
                         onChange={handlePhotoChange}
                       />
                     </div>
-                    <p className="text-xs text-slate-500">Chạm để tải ảnh đại diện của bạn</p>
+                    <p className="text-xs text-slate-500">Chạm để chọn hoặc chụp ảnh đại diện</p>
                   </div>
 
                   {/* Name Input */}
