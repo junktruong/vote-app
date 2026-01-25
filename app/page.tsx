@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { Suspense, useEffect, useId, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image"; // Dùng thẻ img thường nếu không config next/image, ở đây mình dùng thẻ img native cho đơn giản với logic cũ
 
@@ -31,7 +31,7 @@ function openInDefaultBrowser(url: string, userAgent: string) {
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
-export default function Home() {
+function HomeContent() {
   const r = useRouter();
   const searchParams = useSearchParams();
   const photoInputId = useId();
@@ -367,5 +367,13 @@ export default function Home() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={null}>
+      <HomeContent />
+    </Suspense>
   );
 }
