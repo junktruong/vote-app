@@ -46,11 +46,30 @@ export default function AvatarPanel() {
   }
 
   async function submitName() {
-    if (!newName.trim()) return;
-    setUser((prev: any) => ({ ...prev, fullName: newName }));
-    setIsEditingName(false);
-    setMsg("Đã đổi tên");
-    setTimeout(() => setMsg(""), 1500);
+     const nextName = newName.trim();
+    if (!nextName) {
+      setMsg("Vui lòng nhập tên hợp lệ");
+      return;
+    }
+    setMsg("Đang lưu...");
+    try {
+      const res = await fetch("/api/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fullName: nextName }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setMsg(data?.error || "Không thể đổi tên");
+        return;
+      }
+      setUser((prev: any) => ({ ...prev, fullName: data.fullName || nextName }));
+      setIsEditingName(false);
+      setMsg("Đã đổi tên");
+      setTimeout(() => setMsg(""), 1500);
+    } catch (error) {
+      setMsg("Không thể kết nối máy chủ");
+    }
   }
 
   function cancelEditName() {
@@ -156,4 +175,4 @@ export default function AvatarPanel() {
       </div>
     </div>
   );
-}
+} 
