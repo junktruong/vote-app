@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image"; // Dùng thẻ img thường nếu không config next/image, ở đây mình dùng thẻ img native cho đơn giản với logic cũ
 
 // --- LOGIC HELPER FUNCTIONS (GIỮ NGUYÊN) ---
@@ -33,9 +33,11 @@ function openInDefaultBrowser(url: string, userAgent: string) {
 
 export default function Home() {
   const r = useRouter();
+  const searchParams = useSearchParams();
   const photoInputId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const accessTokenKey = "accessToken";
   
   // --- STATE (GIỮ NGUYÊN) ---
   const [reg, setReg] = useState({ fullName: "", photoUrl: "" });
@@ -48,12 +50,40 @@ export default function Home() {
 
   // --- EFFECTS (GIỮ NGUYÊN) ---
   useEffect(() => {
-    fetch("/api/me")
-      .then((res) => res.json())
-      .then((d) => {
-        if (d.user) r.push("/dashboard");
-      });
-  }, [r]);
+    let active = true;
+    const loggedOut = searchParams.get("logged_out") === "1";
+    const requestedMode = searchParams.get("mode");
+
+    if (loggedOut) {
+      localStorage.removeItem(accessTokenKey);
+    }
+    if (requestedMode === "login" || requestedMode === "register") {
+      setMode(requestedMode);
+    }
+
+    async function bootstrap() {
+      const token = localStorage.getItem(accessTokenKey);
+      if (token) {
+        const sessionRes = await fetch("/api/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ accessToken: token }),
+        });
+        if (!sessionRes.ok) {
+          localStorage.removeItem(accessTokenKey);
+        }
+      }
+
+      const res = await fetch("/api/me");
+      const d = await res.json();
+      if (active && d.user) r.push("/dashboard");
+    }
+
+    bootstrap();
+    return () => {
+      active = false;
+    };
+  }, [r, searchParams]);
 
   useEffect(() => {
     const ua = navigator.userAgent || "";
@@ -79,6 +109,9 @@ export default function Home() {
       const res = await fetch("/api/register", { method: "POST", body: fd });
       const data = await res.json();
       if (!res.ok) return setMsg(data.error || "Lỗi đăng ký");
+      if (data.accessToken) {
+        localStorage.setItem(accessTokenKey, data.accessToken);
+      }
       r.push("/dashboard");
     } catch (e) {
       setMsg("Lỗi kết nối server");
@@ -91,6 +124,9 @@ export default function Home() {
       const res = await fetch("/api/login", { method: "POST" });
       const data = await res.json();
       if (!res.ok) return setMsg(data.error || "Lỗi đăng nhập");
+      if (data.accessToken) {
+        localStorage.setItem(accessTokenKey, data.accessToken);
+      }
       r.push("/dashboard");
     } catch (e) {
       setMsg("Lỗi kết nối server");

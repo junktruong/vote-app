@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { clearUserSession } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(req: Request) {
   await clearUserSession();
-  return NextResponse.redirect(new URL("/","https://vote-app-silk.vercel.app/"));
+  const url = new URL(req.url);
+  url.pathname = "/";
+  url.searchParams.set("logged_out", "1");
+  return NextResponse.redirect(url);
 }
     

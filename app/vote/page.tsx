@@ -9,6 +9,7 @@ export default function VotePage() {
   const [submitting, setSubmitting] = useState(false);
   const [justVoted, setJustVoted] = useState<string[]>([]);
   const r = useRouter();
+  const accessTokenKey = "accessToken";
 
   async function load() {
     const res = await fetch("/api/results");
@@ -17,7 +18,35 @@ export default function VotePage() {
     setMsg("");
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    let active = true;
+    async function ensureAuth() {
+      const token = localStorage.getItem(accessTokenKey);
+      if (token) {
+        const sessionRes = await fetch("/api/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ accessToken: token }),
+        });
+        if (!sessionRes.ok) {
+          localStorage.removeItem(accessTokenKey);
+        }
+      }
+      const res = await fetch("/api/me");
+      const d = await res.json();
+      if (!d.user) {
+        r.push("/?mode=login");
+        return;
+      }
+      if (active) {
+        load();
+      }
+    }
+    ensureAuth();
+    return () => {
+      active = false;
+    };
+  }, [r]);
 
   async function vote() {
     setMsg("Đang gửi bình chọn...");

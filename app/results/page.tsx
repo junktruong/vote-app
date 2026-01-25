@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function Results() {
   const [data, setData] = useState<any>(null);
@@ -7,6 +8,8 @@ export default function Results() {
   const lastReveal = useRef<boolean | null>(null);
   const [winnerReady, setWinnerReady] = useState(false);
   const [winnerPhoto, setWinnerPhoto] = useState("");
+  const r = useRouter();
+  const accessTokenKey = "accessToken";
 
   async function tick() {
     const res = await fetch("/api/results", { cache: "no-store" });
@@ -17,10 +20,39 @@ export default function Results() {
   }
 
   useEffect(() => {
-    tick();
-    const t = setInterval(tick, 2000);
-    return () => clearInterval(t);
-  }, []);
+    let interval: NodeJS.Timeout | null = null;
+    let active = true;
+
+    async function start() {
+      const token = localStorage.getItem(accessTokenKey);
+      if (token) {
+        const sessionRes = await fetch("/api/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ accessToken: token }),
+        });
+        if (!sessionRes.ok) {
+          localStorage.removeItem(accessTokenKey);
+        }
+      }
+      const res = await fetch("/api/me");
+      const d = await res.json();
+      if (!d.user) {
+        r.push("/?mode=login");
+        return;
+      }
+      if (active) {
+        tick();
+        interval = setInterval(tick, 2000);
+      }
+    }
+
+    start();
+    return () => {
+      active = false;
+      if (interval) clearInterval(interval);
+    };
+  }, [r]);
 
   useEffect(() => {
     if (!data?.poll) return;

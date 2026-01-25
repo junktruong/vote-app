@@ -1,8 +1,13 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getUserIdFromSession } from "@/lib/auth";
 import AvatarPanel from "./avatar-panel";
 
 export default async function Dashboard() {
-const meRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL ?? ""}/api/me`, { cache: "no-store" }).catch(() => null);
+  const userId = await getUserIdFromSession();
+  if (!userId) {
+    redirect("/?mode=login");
+  }
 
   return (
     <main className="min-h-screen bg-[#FFFAF0] text-slate-900 selection:bg-red-100">

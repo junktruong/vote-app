@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/db";
 import User from "@/models/User";
-import { getOrSetDeviceId, setUserSession } from "@/lib/auth";
+import { createAccessToken, getOrSetDeviceId, setUserSession } from "@/lib/auth";
 import { getClientIp } from "@/lib/request";
 
 export async function POST(req: Request) {
@@ -58,7 +58,7 @@ export async function POST(req: Request) {
   try {
     const user = await User.create({ fullName, thumb, photo, deviceId, lastKnownIp: clientIp || undefined });
     await setUserSession(String(user._id));
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, accessToken: createAccessToken(String(user._id)) });
   } catch (e: any) {
     console.log("error : ", e.message);
 

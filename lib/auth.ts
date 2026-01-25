@@ -21,6 +21,14 @@ function verify(signed: string | undefined | null) {
   return hmac(value) === sig ? value : null;
 }
 
+export function createAccessToken(userId: string) {
+  return sign(userId);
+}
+
+export function getUserIdFromAccessToken(token: string) {
+  return verify(token);
+}
+
 export async function getOrSetDeviceId() { 
   const jar = await cookies();
   const existing = jar.get(DEVICE_COOKIE)?.value;
