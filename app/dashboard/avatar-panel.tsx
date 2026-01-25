@@ -8,10 +8,12 @@ export default function AvatarPanel() {
   const [preview, setPreview] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [msg, setMsg] = useState("");
+  const [msgTone, setMsgTone] = useState<"success" | "error" | "info">("info");
   
   // State đổi tên
   const [isEditingName, setIsEditingName] = useState(false);
   const [newName, setNewName] = useState("");
+  const [isSavingName, setIsSavingName] = useState(false);
   const inputNameRef = useRef<HTMLInputElement>(null);
 
   async function loadMe() {
@@ -41,16 +43,56 @@ export default function AvatarPanel() {
   }
 
   async function submitPhoto() {
+    setMsgTone("success");
     setMsg("Đã lưu!");
     setTimeout(() => { setMsg(""); setPhotoFile(null); }, 1500);
   }
 
   async function submitName() {
-    if (!newName.trim()) return;
-    setUser((prev: any) => ({ ...prev, fullName: newName }));
-    setIsEditingName(false);
-    setMsg("Đã đổi tên");
-    setTimeout(() => setMsg(""), 1500);
+    const trimmedName = newName.trim();
+    if (!trimmedName) {
+      setMsgTone("error");
+      setMsg("Vui lòng nhập tên hợp lệ.");
+      return;
+    }
+    if (trimmedName.length > 60) {
+      setMsgTone("error");
+      setMsg("Tên quá dài (tối đa 60 ký tự).");
+      return;
+    }
+    if (trimmedName === user?.fullName) {
+      setIsEditingName(false);
+      return;
+    }
+
+    setIsSavingName(true);
+    setMsgTone("info");
+    setMsg("Đang lưu...");
+
+    try {
+      const res = await fetch("/api/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fullName: trimmedName }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setMsgTone("error");
+        setMsg(data?.error || "Không thể đổi tên.");
+        return;
+      }
+      setUser((prev: any) => ({ ...prev, fullName: data?.user?.fullName || trimmedName }));
+      setNewName(data?.user?.fullName || trimmedName);
+      setIsEditingName(false);
+      setMsgTone("success");
+      setMsg("Đã đổi tên");
+      setTimeout(() => setMsg(""), 1500);
+    } catch (e) {
+      setMsgTone("error");
+      setMsg("Không thể kết nối server.");
+    } finally {
+      setIsSavingName(false);
+    }
   }
 
   function cancelEditName() {
@@ -101,13 +143,23 @@ export default function AvatarPanel() {
               className="h-9 w-32 min-w-0 rounded-lg border border-red-200 bg-white px-2 text-base font-bold text-slate-900 shadow-sm focus:border-red-500 focus:outline-none md:w-40"
             />
             {/* Nút Save to */}
-            <button onTouchEnd={submitName} onClick={submitName} className="flex h-9 w-9 items-center justify-center rounded-full bg-green-100 text-green-700 active:scale-90 transition-transform">
+            <button
+              onTouchEnd={submitName}
+              onClick={submitName}
+              disabled={isSavingName}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-green-100 text-green-700 active:scale-90 transition-transform disabled:cursor-not-allowed disabled:opacity-60"
+            >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
                 <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
               </svg>
             </button>
             {/* Nút Cancel to */}
-            <button onTouchEnd={cancelEditName} onClick={cancelEditName} className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 active:scale-90 transition-transform">
+            <button
+              onTouchEnd={cancelEditName}
+              onClick={cancelEditName}
+              disabled={isSavingName}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 active:scale-90 transition-transform disabled:cursor-not-allowed disabled:opacity-60"
+            >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
                 <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
               </svg>
@@ -147,7 +199,11 @@ export default function AvatarPanel() {
               </svg>
             </button>
           ) : (
-            <span className={`text-xs font-medium ${msg ? "text-green-600" : "text-slate-500"}`}>
+            <span
+              className={`text-xs font-medium ${
+                msg ? (msgTone === "error" ? "text-red-600" : msgTone === "info" ? "text-slate-600" : "text-green-600") : "text-slate-500"
+              }`}
+            >
               {msg || (user?.role === 'admin' ? "Quản trị viên" : "Hội viên chính thức")}
             </span>
           )}
