@@ -6,6 +6,7 @@ import { getClientIp } from "@/lib/request";
 
 export async function POST(req: Request) {
   await dbConnect();
+
   const deviceId = await getOrSetDeviceId();
   const clientIp = await getClientIp();
 
@@ -33,35 +34,56 @@ export async function POST(req: Request) {
     }
   }
 
-  const apiKey = process.env.IMGBB_API_KEY ?? "5a3bdb946de1c12c9e08eceab90e406f";
-  const uploadForm = new FormData();
-  uploadForm.append("image", photoFile);
-
-  let thumb = "";
+  // ✅ Upload lên PHP server (direct link)
   let photo = "";
+  let thumb = "";
+
   try {
-    const uploadRes = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
+    const uploadForm = new FormData();
+    // IMPORTANT: PHP endpoint nhận field name là "file"
+    uploadForm.append("file", photoFile);
+
+    // Bạn có thể đưa URL này vào ENV: PHP_UPLOAD_URL
+    const uploadUrl = process.env.PHP_UPLOAD_URL || "https://truongdat.id.vn/api/upload.php";
+
+    const uploadRes = await fetch(uploadUrl, {
       method: "POST",
       body: uploadForm,
+      // headers: { "Authorization": "Bearer YOUR_SECRET" }, // nếu bạn bật auth ở PHP
     });
-    const uploadData = await uploadRes.json();
 
-    thumb = uploadData?.data?.thumb?.url || "";
-    photo = uploadData?.data?.url || "";
-    if (!uploadRes.ok || !thumb || !photo) {
-      return NextResponse.json({ error: "Không thể tải ảnh lên." }, { status: 400 });
+    const uploadData = await uploadRes.json().catch(() => ({} as any));
+
+    photo = uploadData?.url || "";
+    thumb = photo; // nếu chưa tạo thumbnail riêng thì dùng tạm photo
+
+    if (!uploadRes.ok || !uploadData?.ok || !photo) {
+      return NextResponse.json(
+        { error: uploadData?.error || "Không thể tải ảnh lên." },
+        { status: 400 }
+      );
     }
   } catch (error) {
     return NextResponse.json({ error: "Không thể tải ảnh lên." }, { status: 400 });
   }
 
   try {
-    const user = await User.create({ fullName, thumb, photo, deviceId, lastKnownIp: clientIp || undefined });
+    const user = await User.create({
+      fullName,
+      thumb,
+      photo,
+      deviceId,
+      lastKnownIp: clientIp || undefined,
+    });
+
     await setUserSession(String(user._id));
-    return NextResponse.json({ ok: true, accessToken: createAccessToken(String(user._id)) });
+
+    return NextResponse.json({
+      ok: true,
+      accessToken: createAccessToken(String(user._id)),
+    });
   } catch (e: any) {
     console.log("error : ", e.message);
-
     return NextResponse.json({ error: "Không thể tạo tài khoản. Vui lòng thử lại." }, { status: 400 });
   }
 }
