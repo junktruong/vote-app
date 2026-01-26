@@ -14,21 +14,22 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Ảnh đại diện không hợp lệ." }, { status: 400 });
   }
 
-  const apiKey = process.env.IMGBB_API_KEY ?? "5a3bdb946de1c12c9e08eceab90e406f";
-  const uploadForm = new FormData();
-  uploadForm.append("image", photoFile);
-
   try {
-    const uploadRes = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
+    const uploadForm = new FormData();
+    uploadForm.append("file", photoFile);
+
+    const uploadUrl = process.env.PHP_UPLOAD_URL || "https://truongdat.id.vn/api/upload.php";
+
+    const uploadRes = await fetch(uploadUrl, {
       method: "POST",
       body: uploadForm,
     });
-    const uploadData = await uploadRes.json();
 
-    const thumb = uploadData?.data?.thumb?.url || "";
-    const photo = uploadData?.data?.url || "";
-    if (!uploadRes.ok || !thumb || !photo) {
-      return NextResponse.json({ error: "Không thể tải ảnh lên." }, { status: 400 });
+    const uploadData = await uploadRes.json().catch(() => ({} as any));
+    const photo = uploadData?.url || "";
+    const thumb = photo;
+    if (!uploadRes.ok || !uploadData?.ok || !photo) {
+      return NextResponse.json({ error: uploadData?.error || "Không thể tải ảnh lên." }, { status: 400 });
     }
 
     await User.findByIdAndUpdate(userId, { thumb, photo });

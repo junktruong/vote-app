@@ -8,11 +8,14 @@ export default function AvatarPanel() {
   const [preview, setPreview] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [msg, setMsg] = useState("");
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isSavingPhoto, setIsSavingPhoto] = useState(false);
   
   // State đổi tên
   const [isEditingName, setIsEditingName] = useState(false);
   const [newName, setNewName] = useState("");
   const inputNameRef = useRef<HTMLInputElement>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   async function loadMe() {
     const res = await fetch("/api/me");
@@ -41,8 +44,28 @@ export default function AvatarPanel() {
   }
 
   async function submitPhoto() {
-    setMsg("Đã lưu!");
-    setTimeout(() => { setMsg(""); setPhotoFile(null); }, 1500);
+    if (!photoFile) return;
+    setIsSavingPhoto(true);
+    setMsg("Đang lưu ảnh...");
+    const formData = new FormData();
+    formData.append("photo", photoFile);
+    try {
+      const res = await fetch("/api/avatar", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) {
+        setMsg(data?.error || "Không thể lưu ảnh");
+        return;
+      }
+      setPreview(data?.thumb || data?.photo || preview);
+      setUser((prev: any) => ({ ...prev, thumb: data?.thumb, photo: data?.photo }));
+      setPhotoFile(null);
+      setMsg("Đã lưu ảnh!");
+      setTimeout(() => setMsg(""), 1500);
+    } catch (error) {
+      setMsg("Không thể kết nối máy chủ");
+    } finally {
+      setIsSavingPhoto(false);
+    }
   }
 
   async function submitName() {
@@ -80,12 +103,23 @@ export default function AvatarPanel() {
   // Skeleton khi đang load
   if (!user && !preview) return <div className="h-20 w-56 animate-pulse rounded-full bg-white/40" />;
 
+  function openPhotoPicker() {
+    photoInputRef.current?.click();
+  }
+
   return (
     <div className="group/panel flex items-center gap-4 rounded-[2rem] bg-white/60 p-2 pr-6 shadow-sm ring-1 ring-white/50 backdrop-blur-md transition-all hover:bg-white/90 md:pr-8">
       
       {/* 1. AVATAR KHUNG TO */}
       <div className="relative flex-shrink-0">
-        <label htmlFor={photoInputId} className="cursor-pointer active:scale-95 transition-transform block">
+        <button
+          type="button"
+          onClick={() => {
+            if (preview) setIsPreviewOpen(true);
+          }}
+          className="cursor-pointer active:scale-95 transition-transform block"
+          aria-label="Xem ảnh đại diện"
+        >
           
           {/* Ảnh chính: To hơn (h-16 = 64px mobile, h-20 = 80px desktop) */}
           <div className="h-16 w-16 overflow-hidden rounded-full border-[3px] border-white shadow-md ring-2 ring-red-100 md:h-20 md:w-20">
@@ -95,15 +129,27 @@ export default function AvatarPanel() {
               <div className="flex h-full w-full items-center justify-center bg-slate-100 text-xs text-slate-400 font-bold">User</div>
             )}
           </div>
+        </button>
 
-          {/* Badge Camera: Nút tròn nổi ở góc dưới - Rất dễ bấm */}
-          <div className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full bg-slate-800 text-white shadow-md ring-2 ring-white transition-colors hover:bg-red-600 md:h-8 md:w-8">
+        {/* Badge Camera: Nút tròn nổi ở góc dưới - Rất dễ bấm */}
+        <button
+          type="button"
+          onClick={openPhotoPicker}
+          className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full bg-slate-800 text-white shadow-md ring-2 ring-white transition-colors hover:bg-red-600 active:scale-95 md:h-8 md:w-8"
+          aria-label="Tải ảnh mới"
+        >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 md:h-4 md:w-4">
               <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
             </svg>
-          </div>
-        </label>
-        <input id={photoInputId} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
+        </button>
+        <input
+          id={photoInputId}
+          ref={photoInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handlePhotoChange}
+        />
       </div>
 
       {/* 2. INFO AREA */}
@@ -158,9 +204,10 @@ export default function AvatarPanel() {
           {photoFile ? (
             <button
               onClick={submitPhoto}
-              className="animate-in fade-in slide-in-from-left-2 flex items-center gap-1.5 rounded-full bg-red-600 px-3 py-1 text-xs font-bold text-white shadow-md hover:bg-red-700 active:scale-95"
+              disabled={isSavingPhoto}
+              className="animate-in fade-in slide-in-from-left-2 flex items-center gap-1.5 rounded-full bg-red-600 px-3 py-1 text-xs font-bold text-white shadow-md hover:bg-red-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-70"
             >
-              <span>Lưu ảnh mới</span>
+              <span>{isSavingPhoto ? "Đang lưu..." : "Lưu ảnh mới"}</span>
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
               </svg>
@@ -173,6 +220,34 @@ export default function AvatarPanel() {
         </div>
 
       </div>
+
+      {isPreviewOpen && preview && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setIsPreviewOpen(false)}
+        >
+          <div
+            className="relative max-h-[80vh] max-w-[80vw]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <img
+              src={preview}
+              alt="Ảnh đại diện"
+              className="h-full max-h-[80vh] w-full max-w-[80vw] rounded-3xl object-contain shadow-2xl"
+            />
+            <button
+              type="button"
+              onClick={() => setIsPreviewOpen(false)}
+              className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-slate-600 shadow hover:bg-white"
+              aria-label="Đóng xem ảnh"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 
