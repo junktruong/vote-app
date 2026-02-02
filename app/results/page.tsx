@@ -212,10 +212,10 @@ export default function Results() {
         </header>
 
         {remainingDisplay && !data.poll?.revealWinner && (
-          <div className="mx-auto mb-10 flex w-full max-w-md items-center justify-center gap-4 rounded-3xl border border-white/10 bg-white/5 px-6 py-4 text-center text-slate-200 backdrop-blur-md">
-            <div className="text-3xl">⏳</div>
+          <div className="fixed right-6 top-6 z-20 flex items-center gap-4 rounded-2xl border border-yellow-400/30 bg-black/50 px-5 py-3 text-center text-slate-100 shadow-[0_0_25px_rgba(250,204,21,0.25)] backdrop-blur-lg">
+            <div className="text-2xl">⏳</div>
             <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Thời gian còn lại</p>
+              <p className="text-[10px] uppercase tracking-[0.35em] text-yellow-200/70">Đếm ngược</p>
               <p className="text-2xl font-bold text-yellow-200">{remainingDisplay}</p>
             </div>
           </div>
