@@ -1,29 +1,22 @@
 import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/db";
 import User from "@/models/User";
-import { createAccessToken, getOrSetDeviceId, setUserSession } from "@/lib/auth";
-import { getClientIp } from "@/lib/request";
+import { createAccessToken, setUserSession } from "@/lib/auth";
 
 export async function POST(req: Request) {
   await dbConnect();
-  const deviceId = await getOrSetDeviceId();
-  const clientIp = await getClientIp();
-
-  let user = await User.findOne({ deviceId });
-  if (!user && clientIp) {
-    user = await User.findOne({ lastKnownIp: clientIp });
-    if (user) {
-      user.deviceId = deviceId;
-      user.lastKnownIp = clientIp;
-      await user.save();
-    }
-  } else if (user && clientIp && user.lastKnownIp !== clientIp) {
-    user.lastKnownIp = clientIp;
-    await user.save();
+  const payload = await req.json().catch(() => null);
+  const fullName = String(payload?.fullName || "").trim();
+  if (!fullName) {
+    return NextResponse.json({ error: "Vui lòng nhập tên." }, { status: 400 });
+  }
+  if (fullName.length > 60) {
+    return NextResponse.json({ error: "Tên không được vượt quá 60 ký tự." }, { status: 400 });
   }
 
+  let user = await User.findOne({ fullName });
   if (!user) {
-    return NextResponse.json({ error: "Máy này chưa tạo tài khoản. Vui lòng đăng ký trước." }, { status: 400 });
+    user = await User.create({ fullName });
   }
 
   await setUserSession(String(user._id));

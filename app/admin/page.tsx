@@ -4,12 +4,21 @@ import { useEffect, useState } from "react";
 export default function Admin() {
   const [pw, setPw] = useState("");
   const [isAuthed, setIsAuthed] = useState(false);
-  const [users, setUsers] = useState<any[]>([]);
   const [title, setTitle] = useState("");
   const [maxVotes, setMaxVotes] = useState(3);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [candidateInput, setCandidateInput] = useState("");
   const [msg, setMsg] = useState("");
   const [polls, setPolls] = useState<any[]>([]);
+
+  function parseCandidates(input: string) {
+    const raw = input
+      .split(/\r?\n|,/)
+      .map((name) => name.trim())
+      .filter(Boolean);
+    return Array.from(new Set(raw));
+  }
+
+  const candidateNames = parseCandidates(candidateInput);
 
   async function adminLogin() {
     setMsg("Đang đăng nhập...");
@@ -22,19 +31,7 @@ export default function Admin() {
     if (!res.ok) return setMsg(d.error || "Lỗi");
     setIsAuthed(true);
     setMsg("OK");
-    await loadUsers();
     await loadPolls();
-  }
-
-  async function loadUsers() {
-    // tận dụng /api/results (nếu có poll) là không đủ; nên tạm gọi endpoint tự làm nhanh:
-    // để nhanh, lấy danh sách users qua results? Không được.
-    // => Bạn muốn chuẩn thì mình sẽ thêm /api/admin/users. Tạm cho nhanh: bạn tạo poll từ ID bạn biết.
-    // Mình sẽ làm luôn endpoint users (phần dưới).
-    const res = await fetch("/api/admin/users");
-    const d = await res.json();
-    if (!res.ok) return setMsg(d.error || "Lỗi");
-    setUsers(d.users);
   }
 
   async function loadPolls() {
@@ -49,7 +46,7 @@ export default function Admin() {
     const res = await fetch("/api/admin/create-poll", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, candidateUserIds: Array.from(selected), maxVotes }),
+      body: JSON.stringify({ title, candidateNames, maxVotes }),
     });
     const d = await res.json();
     if (!res.ok) return setMsg(d.error || "Lỗi");
@@ -103,14 +100,14 @@ export default function Admin() {
   }
 
   useEffect(() => {
-    // thử load users, nếu 401 thì chưa authed
-    fetch("/api/admin/users").then(async r => {
-      if (r.ok) {
-        setIsAuthed(true);
-        setUsers((await r.json()).users);
-        await loadPolls();
-      }
-    }).catch(()=>{});
+    fetch("/api/admin/polls")
+      .then(async (r) => {
+        if (r.ok) {
+          setIsAuthed(true);
+          await loadPolls();
+        }
+      })
+      .catch(() => {});
   }, []);
 
   if (!isAuthed) {
@@ -186,31 +183,19 @@ export default function Admin() {
                 />
               </label>
             </div>
-            <p className="mt-4 text-sm text-slate-600">Chọn ứng viên:</p>
-
-            <div className="mt-4 grid gap-4 md:grid-cols-2">
-              {users.map((u) => (
-                <label
-                  key={u.id}
-                  className="flex cursor-pointer items-center gap-4 rounded-2xl border border-red-100 bg-white px-4 py-3 shadow-sm transition hover:border-red-200"
-                >
-                  <img src={u.thumb} className="h-12 w-12 rounded-xl object-cover" />
-                  <div className="flex-1">
-                    <div className="font-semibold text-slate-900">{u.fullName}</div>
-                  </div>
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 accent-[#D32F2F]"
-                    checked={selected.has(u.id)}
-                    onChange={() => {
-                      setSelected((prev) => {
-                        const n = new Set(prev);
-                        n.has(u.id) ? n.delete(u.id) : n.add(u.id);
-                        return n;
-                      });
-                    }}
-                  />
-                </label>
+            <p className="mt-4 text-sm text-slate-600">Danh sách ứng viên (mỗi dòng 1 tên hoặc phân tách bằng dấu phẩy):</p>
+            <textarea
+              value={candidateInput}
+              onChange={(e) => setCandidateInput(e.target.value)}
+              rows={5}
+              placeholder="Ví dụ: Nguyễn Văn A, Trần Thị B..."
+              className="mt-3 w-full rounded-2xl border border-red-100 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm focus:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-200"
+            />
+            <div className="mt-3 flex flex-wrap gap-2 text-xs">
+              {candidateNames.map((name) => (
+                <span key={name} className="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-600">
+                  {name}
+                </span>
               ))}
             </div>
           </section>
@@ -218,7 +203,8 @@ export default function Admin() {
           <section className="flex flex-wrap gap-3">
             <button
               onClick={createPoll}
-              className="rounded-full bg-[#D32F2F] px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-[#B71C1C]"
+              disabled={!title.trim() || candidateNames.length < 2}
+              className="rounded-full bg-[#D32F2F] px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-[#B71C1C] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none"
             >
               Tạo &amp; Bắt đầu
             </button>

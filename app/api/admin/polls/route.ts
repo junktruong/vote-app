@@ -16,7 +16,7 @@ export async function GET() {
       revealWinner: poll.revealWinner,
       showOnResults: poll.showOnResults,
       maxVotes: poll.maxVotes ?? 3,
-      candidateCount: poll.candidateUserIds?.length ?? 0,
+      candidateCount: poll.candidates?.length ?? 0,
       createdAt: poll.createdAt,
     })),
   });

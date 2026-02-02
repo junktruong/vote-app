@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useId, useRef, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 // --- LOGIC HELPER FUNCTIONS (GIỮ NGUYÊN) ---
@@ -33,30 +33,18 @@ function openInDefaultBrowser(url: string, userAgent: string) {
 function HomeContent() {
   const r = useRouter();
   const searchParams = useSearchParams();
-  const photoInputId = useId();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
   const accessTokenKey = "accessToken";
 
   // --- STATE (GIỮ NGUYÊN) ---
-  const [reg, setReg] = useState({ fullName: "", photoUrl: "" });
-  const [mode, setMode] = useState<"register" | "login">("register");
+  const [fullName, setFullName] = useState("");
   const [msg, setMsg] = useState("");
-  const [photoName, setPhotoName] = useState("");
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [inAppBrowser, setInAppBrowser] = useState(false);
-  const [showPhotoOptions, setShowPhotoOptions] = useState(false);
 
   useEffect(() => {
     let active = true;
     const loggedOut = searchParams.get("logged_out") === "1";
-    const requestedMode = searchParams.get("mode");
-
     if (loggedOut) {
       localStorage.removeItem(accessTokenKey);
-    }
-    if (requestedMode === "login" || requestedMode === "register") {
-      setMode(requestedMode);
     }
 
     async function bootstrap() {
@@ -92,33 +80,18 @@ function HomeContent() {
     }
   }, []);
 
-  async function register() {
-    setMsg("Đang khởi tạo...");
-    if (!photoFile) {
-      setMsg("Vui lòng chọn ảnh đại diện.");
+  async function login() {
+    if (!fullName.trim()) {
+      setMsg("Vui lòng nhập tên của bạn.");
       return;
     }
-    const fd = new FormData();
-    fd.append("fullName", reg.fullName);
-    fd.append("photo", photoFile);
-
-    try {
-      const res = await fetch("/api/register", { method: "POST", body: fd });
-      const data = await res.json();
-      if (!res.ok) return setMsg(data.error || "Lỗi đăng ký");
-      if (data.accessToken) {
-        localStorage.setItem(accessTokenKey, data.accessToken);
-      }
-      r.push("/dashboard");
-    } catch (e) {
-      setMsg("Lỗi kết nối server");
-    }
-  }
-
-  async function login() {
     setMsg("Đang đăng nhập...");
     try {
-      const res = await fetch("/api/login", { method: "POST" });
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fullName }),
+      });
       const data = await res.json();
       if (!res.ok) return setMsg(data.error || "Lỗi đăng nhập");
       if (data.accessToken) {
@@ -129,30 +102,6 @@ function HomeContent() {
       setMsg("Lỗi kết nối server");
     }
   }
-
-  function handlePhotoChange(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    setPhotoName(file.name);
-    setPhotoFile(file);
-    const reader = new FileReader();
-    reader.onload = () => {
-      setReg((s) => ({ ...s, photoUrl: String(reader.result || "") }));
-    };
-    reader.readAsDataURL(file);
-  }
-
-  function openFilePicker() {
-    fileInputRef.current?.click();
-    setShowPhotoOptions(false);
-  }
-
-  function openCameraPicker() {
-    cameraInputRef.current?.click();
-    setShowPhotoOptions(false);
-  }
-
-  const isRegister = mode === "register";
 
   return (
     <main className="min-h-screen bg-[#FFFAF0] text-slate-900 selection:bg-red-100">
@@ -168,33 +117,10 @@ function HomeContent() {
               Xuân Bính Ngọ 2026
             </div>
             <h1 className="mt-4 text-3xl font-extrabold text-slate-900">Cổng Bình Chọn</h1>
-            <p className="mt-2 text-sm text-slate-500">Vui lòng định danh để tham gia hệ thống</p>
+            <p className="mt-2 text-sm text-slate-500">Chỉ cần nhập tên để tham gia bình chọn</p>
           </div>
 
           <div className="overflow-hidden rounded-3xl bg-white shadow-xl ring-1 ring-slate-900/5">
-            <div className="grid grid-cols-2 border-b border-slate-100 bg-slate-50/50 p-2">
-              <button
-                onClick={() => setMode("register")}
-                className={`rounded-xl py-2.5 text-sm font-semibold transition-all ${
-                  isRegister
-                    ? "bg-white text-red-600 shadow-sm ring-1 ring-slate-200"
-                    : "text-slate-500 hover:text-slate-700"
-                }`}
-              >
-                Đăng ký mới
-              </button>
-              <button
-                onClick={() => setMode("login")}
-                className={`rounded-xl py-2.5 text-sm font-semibold transition-all ${
-                  !isRegister
-                    ? "bg-white text-red-600 shadow-sm ring-1 ring-slate-200"
-                    : "text-slate-500 hover:text-slate-700"
-                }`}
-              >
-                Đăng nhập lại
-              </button>
-            </div>
-
             <div className="p-6 sm:p-8">
               {inAppBrowser && (
                 <div className="mb-6 rounded-2xl bg-amber-50 p-4 text-xs text-amber-800 ring-1 ring-amber-200">
@@ -209,104 +135,26 @@ function HomeContent() {
                 </div>
               )}
 
-              {isRegister ? (
-                <div className="space-y-6">
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="relative group">
-                      <button
-                        type="button"
-                        onClick={() => setShowPhotoOptions((s) => !s)}
-                        className="relative flex h-28 w-28 cursor-pointer items-center justify-center overflow-hidden rounded-full border-4 border-slate-50 bg-slate-100 shadow-md transition-transform active:scale-95 group-hover:border-red-100"
-                        aria-haspopup="dialog"
-                        aria-expanded={showPhotoOptions}
-                      >
-                        {reg.photoUrl ? (
-                          <img src={reg.photoUrl} alt="Preview" className="h-full w-full object-cover" />
-                        ) : (
-                          <div className="flex flex-col items-center text-slate-400">
-                            <span className="text-[10px] font-semibold uppercase">Chọn ảnh</span>
-                          </div>
-                        )}
-                        <div className="absolute inset-0 bg-black/10 opacity-0 transition-opacity group-hover:opacity-100" />
-                      </button>
-
-                      {showPhotoOptions && (
-                        <div className="absolute left-1/2 top-full z-10 mt-3 w-56 -translate-x-1/2 rounded-2xl border border-slate-200 bg-white p-2 text-sm shadow-xl">
-                          <button
-                            type="button"
-                            onClick={openFilePicker}
-                            className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-slate-700 transition hover:bg-slate-100"
-                          >
-                            <span>Chọn ảnh từ thư viện</span>
-                            <span className="text-slate-400">📁</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={openCameraPicker}
-                            className="mt-1 flex w-full items-center justify-between rounded-xl px-3 py-2 text-slate-700 transition hover:bg-slate-100"
-                          >
-                            <span>Chụp ảnh mới</span>
-                            <span className="text-slate-400">📷</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setShowPhotoOptions(false)}
-                            className="mt-1 flex w-full items-center justify-center rounded-xl px-3 py-2 text-slate-500 transition hover:bg-slate-100"
-                          >
-                            Hủy
-                          </button>
-                        </div>
-                      )}
-
-                      <input
-                        id={photoInputId}
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        ref={fileInputRef}
-                        onChange={handlePhotoChange}
-                      />
-                      <input
-                        id={`${photoInputId}-camera`}
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        className="hidden"
-                        ref={cameraInputRef}
-                        onChange={handlePhotoChange}
-                      />
-                    </div>
-                    <p className="text-xs text-slate-500">Chạm để chọn hoặc chụp ảnh đại diện</p>
-                  </div>
-
-                  <div>
-                    <label className="mb-1.5 block text-xs font-semibold text-slate-700">Họ và Tên</label>
-                    <input
-                      type="text"
-                      className="w-full rounded-xl border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:border-red-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-red-500/10"
-                      placeholder="Nhập tên của bạn..."
-                      value={reg.fullName}
-                      onChange={(e) => setReg((s) => ({ ...s, fullName: e.target.value }))}
-                    />
-                  </div>
-
-                  <button
-                    onClick={register}
-                    className="w-full rounded-xl bg-red-600 px-4 py-3.5 text-sm font-bold text-white shadow-lg shadow-red-600/20 transition-all hover:bg-red-700 hover:shadow-red-600/30 active:translate-y-0.5"
-                  >
-                    Tạo tài khoản ngay
-                  </button>
+              <div className="space-y-6">
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-slate-700">Họ và Tên</label>
+                  <input
+                    type="text"
+                    className="w-full rounded-xl border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:border-red-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-red-500/10"
+                    placeholder="Nhập tên của bạn..."
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                  />
                 </div>
-              ) : (
-                <div className="py-4 space-y-6">
-                  <button
-                    onClick={login}
-                    className="w-full rounded-xl bg-yellow-400 px-4 py-3.5 text-sm font-bold text-yellow-900 shadow-lg shadow-yellow-400/20 transition-all hover:bg-yellow-500 hover:shadow-yellow-400/30 active:translate-y-0.5"
-                  >
-                    Đăng nhập vào hệ thống
-                  </button>
-                </div>
-              )}
+
+                <button
+                  onClick={login}
+                  disabled={!fullName.trim()}
+                  className="w-full rounded-xl bg-red-600 px-4 py-3.5 text-sm font-bold text-white shadow-lg shadow-red-600/20 transition-all hover:bg-red-700 hover:shadow-red-600/30 active:translate-y-0.5 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
+                >
+                  Vào hệ thống
+                </button>
+              </div>
 
               {msg && (
                 <div className="mt-6 flex items-center justify-center gap-2 text-sm font-medium text-slate-600 animate-pulse">

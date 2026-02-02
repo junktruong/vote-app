@@ -57,7 +57,7 @@ export default function VotePage() {
       const res = await fetch("/api/vote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ candidateUserIds: selected }),
+        body: JSON.stringify({ candidateIds: selected }),
       });
       const d = await res.json();
       if (!res.ok) {
@@ -65,7 +65,7 @@ export default function VotePage() {
         return setMsg(d.error || "Lỗi");
       }
       const votedNames = selected
-        .map((id) => data.candidates.find((c: any) => c.userId === id)?.fullName)
+        .map((id) => data.candidates.find((c: any) => c.candidateId === id)?.fullName)
         .filter(Boolean);
       setJustVoted(votedNames);
       setMsg("Thành công!");
@@ -152,32 +152,26 @@ export default function VotePage() {
         {/* CANDIDATES GRID */}
         <section className="grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
           {data.candidates.map((c: any) => {
-            const isSelected = selected.includes(c.userId);
+            const isSelected = selected.includes(c.candidateId);
             return (
               <div
-                key={c.userId}
-                onClick={() => toggleSelect(c.userId)}
+                key={c.candidateId}
+                onClick={() => toggleSelect(c.candidateId)}
                 className={`group relative cursor-pointer overflow-hidden rounded-2xl border-2 bg-white shadow-sm transition-all duration-300 hover:shadow-lg active:scale-95 ${
                   isSelected 
                     ? "border-yellow-400 ring-2 ring-yellow-400 ring-offset-2" 
                     : "border-transparent hover:border-red-100"
                 }`}
               >
-                {/* Image Container */}
-                <div className="relative aspect-[3/4] w-full overflow-hidden bg-slate-100">
-                  <img 
-                    src={c.thumb || c.photo} 
-                    alt={c.fullName} 
-                    className={`h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 ${isSelected ? 'scale-105' : ''}`}
-                    loading="lazy"
-                  />
-                  
-                  {/* Overlay Gradient Name */}
-                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 pt-10">
-                    <h3 className={`font-bold text-white ${isSelected ? 'text-yellow-300' : ''}`}>
-                      {c.fullName}
-                    </h3>
+                {/* Candidate Card */}
+                <div className="relative flex aspect-[3/4] w-full flex-col items-center justify-center gap-4 bg-slate-50 p-4">
+                  <div className={`flex h-20 w-20 items-center justify-center rounded-full text-2xl font-bold shadow-md transition-transform duration-500 ${isSelected ? "bg-yellow-400 text-yellow-900 scale-105" : "bg-white text-slate-700"}`}>
+                    {c.fullName?.trim()?.slice(0, 1)?.toUpperCase() || "?"}
                   </div>
+
+                  <h3 className={`text-center text-sm font-bold ${isSelected ? 'text-yellow-700' : 'text-slate-800'}`}>
+                    {c.fullName}
+                  </h3>
 
                   {/* Selection Checkmark Badge */}
                   <div className={`absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full shadow-md transition-all ${

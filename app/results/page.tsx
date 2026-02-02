@@ -141,7 +141,7 @@ export default function Results() {
   // Danh sách Top (loại bỏ người thắng nếu đã hiện)
   const otherCandidates = data.candidates
     ?.sort((a: any, b: any) => (b.voteCount || 0) - (a.voteCount || 0))
-    .filter((c: any) => showWinner ? c.userId !== data.top.userId : true) || [];
+    .filter((c: any) => showWinner ? c.candidateId !== data.top.candidateId : true) || [];
 
   return (
     <main className="relative min-h-screen overflow-x-hidden bg-[#0F172A] font-sans text-slate-100">
@@ -201,11 +201,9 @@ export default function Results() {
               <div className="relative z-10 group">
                 <div className="absolute -inset-1 rounded-full bg-gradient-to-br from-yellow-300 via-yellow-500 to-yellow-700 blur opacity-70 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-pulse" />
                 <div className="relative h-48 w-48 overflow-hidden rounded-full border-[6px] border-[#FFD700] shadow-[0_0_40px_rgba(255,215,0,0.4)] md:h-64 md:w-64">
-                   <img 
-                     src={data.top.photo || data.top.thumb} 
-                     alt="Winner" 
-                     className="h-full w-full object-cover"
-                   />
+                   <div className="flex h-full w-full items-center justify-center bg-slate-900 text-5xl font-black text-yellow-200">
+                     {data.top.fullName?.trim()?.slice(0, 1)?.toUpperCase() || "?"}
+                   </div>
                 </div>
                 {/* Badge #1 */}
                 <div className="absolute bottom-2 right-2 flex h-12 w-12 items-center justify-center rounded-full border-2 border-white bg-red-600 text-xl font-bold text-white shadow-lg">
@@ -252,7 +250,7 @@ export default function Results() {
               const rank = showWinner ? index + 2 : index + 1;
               return (
                 <div 
-                  key={c.userId}
+                  key={c.candidateId}
                   className="group flex items-center gap-4 rounded-2xl border border-white/5 bg-white/5 p-3 pr-5 transition-all hover:border-white/10 hover:bg-white/10"
                 >
                   <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full font-bold ${
@@ -263,7 +261,9 @@ export default function Results() {
                     {rank}
                   </div>
                   
-                  <img src={c.thumb || c.photo} className="h-12 w-12 rounded-full object-cover ring-2 ring-white/10" />
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-800 text-lg font-bold text-slate-100 ring-2 ring-white/10">
+                    {c.fullName?.trim()?.slice(0, 1)?.toUpperCase() || "?"}
+                  </div>
                   
                   <div className="flex-1 min-w-0">
                     <h4 className="truncate font-semibold text-slate-200 group-hover:text-white transition-colors">

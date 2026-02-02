@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/db";
 import Poll from "@/models/Poll";
-import User from "@/models/User";
 import Vote from "@/models/Vote";
 
 export async function GET() {
@@ -13,26 +12,19 @@ export async function GET() {
 
   if (!poll) return NextResponse.json({ poll: null, candidates: [], top: null });
 
-  const users = await User.find({ _id: { $in: poll.candidateUserIds } })
-    .select("fullName username thumb photo photoUrl")
-    .lean();
-
   const counts = await Vote.aggregate([
     { $match: { pollId: poll._id } },
-    { $group: { _id: "$candidateUserId", votes: { $sum: 1 } } },
+    { $group: { _id: "$candidateId", votes: { $sum: 1 } } },
   ]);
 
   const map = new Map<string, number>(counts.map((c: any) => [String(c._id), c.votes]));
-  const candidates = users
-    .map((u: any) => ({
-      userId: String(u._id),
-      fullName: u.fullName,
-      username: u.username,
-      thumb: u.thumb || u.photo || u.photoUrl,
-      photo: u.photo || u.thumb || u.photoUrl,
-      votes: map.get(String(u._id)) || 0,
+  const candidates = (poll.candidates || [])
+    .map((c: any) => ({
+      candidateId: String(c.id),
+      fullName: c.name,
+      voteCount: map.get(String(c.id)) || 0,
     }))
-    .sort((a, b) => b.votes - a.votes || a.fullName.localeCompare(b.fullName));
+    .sort((a, b) => b.voteCount - a.voteCount || a.fullName.localeCompare(b.fullName));
 
   const top = candidates[0] || null;
 

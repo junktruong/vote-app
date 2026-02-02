@@ -38,13 +38,21 @@ async function ensureIndexes(conn: typeof mongoose) {
     { username: 1 },
     { name: "username_1", unique: true, partialFilterExpression: { username: { $type: "string" } } }
   );
-  await users.createIndex({ deviceId: 1 }, { name: "deviceId_1", unique: true });
+  const deviceIdx = indexes.find((idx) => idx.name === "deviceId_1");
+  if (deviceIdx) {
+    await users.dropIndex("deviceId_1");
+  }
 
   // Ensure the vote uniqueness constraint is present even when autoIndex is disabled.
   const votes = db.collection("votes");
+  const voteIndexes = await votes.indexes();
+  const legacyVoteIdx = voteIndexes.find((idx) => idx.name === "pollId_1_voterUserId_1_candidateUserId_1");
+  if (legacyVoteIdx) {
+    await votes.dropIndex("pollId_1_voterUserId_1_candidateUserId_1");
+  }
   await votes.createIndex(
-    { pollId: 1, voterUserId: 1, candidateUserId: 1 },
-    { name: "pollId_1_voterUserId_1_candidateUserId_1", unique: true }
+    { pollId: 1, voterUserId: 1, candidateId: 1 },
+    { name: "pollId_1_voterUserId_1_candidateId_1", unique: true }
   );
 }
 
