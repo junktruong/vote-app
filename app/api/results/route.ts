@@ -36,6 +36,7 @@ export async function GET() {
       revealWinner: poll.revealWinner,
       showOnResults: poll.showOnResults,
       maxVotes: poll.maxVotes ?? 3,
+      votingEndsAt: poll.votingEndsAt ?? null,
     },
     candidates,
     top,

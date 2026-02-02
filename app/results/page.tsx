@@ -58,6 +58,8 @@ export default function Results() {
   const [data, setData] = useState<any>(null);
   const [msg, setMsg] = useState("Đang cập nhật số liệu...");
   const lastReveal = useRef<boolean | null>(null);
+  const [revealCountdown, setRevealCountdown] = useState<number | null>(null);
+  const [remainingMs, setRemainingMs] = useState<number | null>(null);
   const r = useRouter();
   const accessTokenKey = "accessToken";
 
@@ -126,9 +128,44 @@ export default function Results() {
           { duration: 1000, easing: "cubic-bezier(0.34, 1.56, 0.64, 1)" }
         );
       }
+      setRevealCountdown(3);
+      let current = 3;
+      const timer = setInterval(() => {
+        current -= 1;
+        if (current <= 0) {
+          clearInterval(timer);
+          setRevealCountdown(null);
+        } else {
+          setRevealCountdown(current);
+        }
+      }, 1000);
     }
     lastReveal.current = !!data.poll.revealWinner;
   }, [data]);
+
+  useEffect(() => {
+    if (!data?.poll?.votingEndsAt) {
+      setRemainingMs(null);
+      return;
+    }
+    let interval: NodeJS.Timeout | null = null;
+    const tickRemaining = () => {
+      const end = new Date(data.poll.votingEndsAt).getTime();
+      const diff = Math.max(0, end - Date.now());
+      setRemainingMs(diff);
+    };
+    tickRemaining();
+    interval = setInterval(tickRemaining, 1000);
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [data?.poll?.votingEndsAt]);
+
+  const remainingSeconds = remainingMs ? Math.floor(remainingMs / 1000) : 0;
+  const remainingMinutes = Math.floor(remainingSeconds / 60);
+  const remainingDisplay = remainingMs === null
+    ? null
+    : `${remainingMinutes.toString().padStart(2, "0")}:${(remainingSeconds % 60).toString().padStart(2, "0")}`;
 
 
   if (!data) return (
@@ -173,6 +210,16 @@ export default function Results() {
             {msg}
           </h1>
         </header>
+
+        {remainingDisplay && !data.poll?.revealWinner && (
+          <div className="mx-auto mb-10 flex w-full max-w-md items-center justify-center gap-4 rounded-3xl border border-white/10 bg-white/5 px-6 py-4 text-center text-slate-200 backdrop-blur-md">
+            <div className="text-3xl">⏳</div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Thời gian còn lại</p>
+              <p className="text-2xl font-bold text-yellow-200">{remainingDisplay}</p>
+            </div>
+          </div>
+        )}
 
         {/* --- WINNER SECTION (QUÁN QUÂN) --- */}
         <section className="mb-16 flex justify-center">
@@ -289,6 +336,14 @@ export default function Results() {
         </section>
 
       </div>
+
+      {revealCountdown ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="text-6xl font-black text-yellow-300 drop-shadow-[0_0_25px_rgba(250,204,21,0.8)] md:text-8xl">
+            {revealCountdown}
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }

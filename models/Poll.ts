@@ -16,6 +16,7 @@ const PollSchema = new Schema(
     showOnResults: { type: Boolean, default: false },
     maxVotes: { type: Number, default: 3 },
     candidates: { type: [CandidateSchema], required: true },
+    votingEndsAt: { type: Date, default: null },
     endedAt: { type: Date, default: null },
   },
   { timestamps: true }

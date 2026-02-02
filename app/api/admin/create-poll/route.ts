@@ -28,6 +28,7 @@ export async function POST(req: Request) {
     showOnResults: true,
     maxVotes: Number.isFinite(Number(maxVotes)) ? Math.max(1, Number(maxVotes)) : 3,
     candidates: uniqueNames.map((name) => ({ id: crypto.randomUUID(), name })),
+    votingEndsAt: null,
   });
 
   return NextResponse.json({ ok: true, pollId: String(poll._id) });

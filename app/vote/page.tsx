@@ -164,11 +164,7 @@ export default function VotePage() {
                 }`}
               >
                 {/* Candidate Card */}
-                <div className="relative flex aspect-[3/4] w-full flex-col items-center justify-center gap-4 bg-slate-50 p-4">
-                  <div className={`flex h-20 w-20 items-center justify-center rounded-full text-2xl font-bold shadow-md transition-transform duration-500 ${isSelected ? "bg-yellow-400 text-yellow-900 scale-105" : "bg-white text-slate-700"}`}>
-                    {c.fullName?.trim()?.slice(0, 1)?.toUpperCase() || "?"}
-                  </div>
-
+                <div className={`relative flex aspect-[3/4] w-full items-center justify-center p-6 ${isSelected ? "bg-yellow-50" : "bg-slate-50"}`}>
                   <h3 className={`text-center text-sm font-bold ${isSelected ? 'text-yellow-700' : 'text-slate-800'}`}>
                     {c.fullName}
                   </h3>
