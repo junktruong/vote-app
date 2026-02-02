@@ -17,7 +17,11 @@ export async function POST(req: Request, { params }: Params) {
   }
 
   const votingEndsAt = new Date(Date.now() + minutes * 60 * 1000);
-  const poll = await Poll.findByIdAndUpdate(pollId, { votingEndsAt }, { new: true });
+  const poll = await Poll.findByIdAndUpdate(
+    pollId,
+    { votingEndsAt, showOnResults: true },
+    { new: true }
+  );
   if (!poll) return NextResponse.json({ error: "Không tìm thấy poll." }, { status: 404 });
 
   return NextResponse.json({ ok: true, votingEndsAt });
