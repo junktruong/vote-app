@@ -9,6 +9,7 @@ export default function VotePage() {
   const [selected, setSelected] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [justVoted, setJustVoted] = useState<string[]>([]);
+  const [nowTick, setNowTick] = useState(Date.now());
   const r = useRouter();
   const accessTokenKey = "accessToken";
 
@@ -50,6 +51,14 @@ export default function VotePage() {
     return () => { active = false; };
   }, [r]);
 
+  useEffect(() => {
+    if (!data?.poll?.votingEndsAt) return;
+    const interval = setInterval(() => {
+      setNowTick(Date.now());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [data?.poll?.votingEndsAt]);
+
   async function vote() {
     setMsg("Đang gửi...");
     setSubmitting(true);
@@ -79,9 +88,11 @@ export default function VotePage() {
 
   // Helper xử lý chọn
   const maxVotes = data?.poll?.maxVotes ?? 3;
+  const votingEndsAt = data?.poll?.votingEndsAt ? new Date(data.poll.votingEndsAt).getTime() : null;
+  const isVotingClosed = Boolean(votingEndsAt && votingEndsAt <= nowTick);
   
   function toggleSelect(candidateId: string) {
-    if (submitting) return; // Chặn khi đang submit
+    if (submitting || isVotingClosed) return; // Chặn khi đang submit hoặc hết giờ
     
     setSelected((prev) => {
       const isSelected = prev.includes(candidateId);
@@ -149,6 +160,12 @@ export default function VotePage() {
           </p>
         </header>
 
+        {isVotingClosed && (
+          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-center text-sm font-semibold text-red-700">
+            Hết thời gian bình chọn. Vui lòng chờ công bố kết quả.
+          </div>
+        )}
+
         {/* CANDIDATES GRID */}
         <section className="grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
           {data.candidates.map((c: any) => {
@@ -208,11 +225,11 @@ export default function VotePage() {
              <span className="mr-3 hidden text-xs text-red-600 font-medium md:inline-block">
                {msg}
              </span>
-             <button
+              <button
                 onClick={vote}
-                disabled={selected.length === 0 || submitting}
+                disabled={selected.length === 0 || submitting || isVotingClosed}
                 className={`rounded-full px-8 py-3 text-sm font-bold shadow-lg transition-all ${
-                  selected.length === 0 
+                  selected.length === 0 || isVotingClosed
                     ? "bg-slate-200 text-slate-400 cursor-not-allowed"
                     : submitting 
                       ? "bg-yellow-100 text-yellow-600 cursor-wait"

@@ -7,7 +7,7 @@ export default function Admin() {
   const [title, setTitle] = useState("");
   const [maxVotes, setMaxVotes] = useState(3);
   const [candidateInput, setCandidateInput] = useState("");
-  const [timerMinutes, setTimerMinutes] = useState(15);
+  const [timerMinutes, setTimerMinutes] = useState(3);
   const [msg, setMsg] = useState("");
   const [polls, setPolls] = useState<any[]>([]);
   const [voters, setVoters] = useState<any[]>([]);
@@ -206,6 +206,7 @@ export default function Admin() {
 
           <section className="rounded-3xl border border-red-100 bg-white/95 p-6 shadow-md">
             <h3 className="text-lg font-semibold text-slate-900">Tạo cuộc bình chọn</h3>
+            <p className="mt-2 text-sm text-slate-600">Sau khi tạo sẽ tự đếm giờ 3 phút.</p>
             <input
               placeholder="Tiêu đề"
               value={title}
