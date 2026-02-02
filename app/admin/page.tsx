@@ -4,12 +4,24 @@ import { useEffect, useState } from "react";
 export default function Admin() {
   const [pw, setPw] = useState("");
   const [isAuthed, setIsAuthed] = useState(false);
-  const [users, setUsers] = useState<any[]>([]);
   const [title, setTitle] = useState("");
   const [maxVotes, setMaxVotes] = useState(3);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [candidateInput, setCandidateInput] = useState("");
+  const [timerMinutes, setTimerMinutes] = useState(3);
   const [msg, setMsg] = useState("");
   const [polls, setPolls] = useState<any[]>([]);
+  const [voters, setVoters] = useState<any[]>([]);
+  const [votesPollTitle, setVotesPollTitle] = useState("");
+
+  function parseCandidates(input: string) {
+    const raw = input
+      .split(/\r?\n|,/)
+      .map((name) => name.trim())
+      .filter(Boolean);
+    return Array.from(new Set(raw));
+  }
+
+  const candidateNames = parseCandidates(candidateInput);
 
   async function adminLogin() {
     setMsg("Đang đăng nhập...");
@@ -22,19 +34,8 @@ export default function Admin() {
     if (!res.ok) return setMsg(d.error || "Lỗi");
     setIsAuthed(true);
     setMsg("OK");
-    await loadUsers();
     await loadPolls();
-  }
-
-  async function loadUsers() {
-    // tận dụng /api/results (nếu có poll) là không đủ; nên tạm gọi endpoint tự làm nhanh:
-    // để nhanh, lấy danh sách users qua results? Không được.
-    // => Bạn muốn chuẩn thì mình sẽ thêm /api/admin/users. Tạm cho nhanh: bạn tạo poll từ ID bạn biết.
-    // Mình sẽ làm luôn endpoint users (phần dưới).
-    const res = await fetch("/api/admin/users");
-    const d = await res.json();
-    if (!res.ok) return setMsg(d.error || "Lỗi");
-    setUsers(d.users);
+    await loadVotes();
   }
 
   async function loadPolls() {
@@ -44,17 +45,26 @@ export default function Admin() {
     setPolls(d.polls);
   }
 
+  async function loadVotes() {
+    const res = await fetch("/api/admin/votes");
+    const d = await res.json();
+    if (!res.ok) return setMsg(d.error || "Lỗi");
+    setVoters(d.voters || []);
+    setVotesPollTitle(d.poll?.title || "");
+  }
+
   async function createPoll() {
     setMsg("Đang tạo poll...");
     const res = await fetch("/api/admin/create-poll", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, candidateUserIds: Array.from(selected), maxVotes }),
+      body: JSON.stringify({ title, candidateNames, maxVotes }),
     });
     const d = await res.json();
     if (!res.ok) return setMsg(d.error || "Lỗi");
     setMsg("Đã tạo & bắt đầu!");
     await loadPolls();
+    await loadVotes();
   }
 
   async function stopPoll() {
@@ -100,17 +110,45 @@ export default function Admin() {
     const d = await res.json();
     if (!res.ok) return setMsg(d.error || "Lỗi");
     setMsg("Đã reset phiếu.");
+    await loadVotes();
+  }
+
+  async function resetVotesForUser(userId: string) {
+    const ok = confirm("Bạn chắc chắn muốn xoá tất cả phiếu của người này?");
+    if (!ok) return;
+    const res = await fetch("/api/admin/votes/reset-user", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId }),
+    });
+    const d = await res.json();
+    if (!res.ok) return setMsg(d.error || "Lỗi");
+    setMsg("Đã xoá phiếu của người này.");
+    await loadVotes();
+  }
+
+  async function startTimer(pollId: string) {
+    const res = await fetch(`/api/admin/polls/${pollId}/start-timer`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ minutes: timerMinutes }),
+    });
+    const d = await res.json();
+    if (!res.ok) return setMsg(d.error || "Lỗi");
+    setMsg("Đã bắt đầu đếm thời gian.");
+    await loadPolls();
   }
 
   useEffect(() => {
-    // thử load users, nếu 401 thì chưa authed
-    fetch("/api/admin/users").then(async r => {
-      if (r.ok) {
-        setIsAuthed(true);
-        setUsers((await r.json()).users);
-        await loadPolls();
-      }
-    }).catch(()=>{});
+    fetch("/api/admin/polls")
+      .then(async (r) => {
+        if (r.ok) {
+          setIsAuthed(true);
+          await loadPolls();
+          await loadVotes();
+        }
+      })
+      .catch(() => {});
   }, []);
 
   if (!isAuthed) {
@@ -168,6 +206,7 @@ export default function Admin() {
 
           <section className="rounded-3xl border border-red-100 bg-white/95 p-6 shadow-md">
             <h3 className="text-lg font-semibold text-slate-900">Tạo cuộc bình chọn</h3>
+            <p className="mt-2 text-sm text-slate-600">Sau khi tạo sẽ tự đếm giờ 3 phút.</p>
             <input
               placeholder="Tiêu đề"
               value={title}
@@ -186,31 +225,19 @@ export default function Admin() {
                 />
               </label>
             </div>
-            <p className="mt-4 text-sm text-slate-600">Chọn ứng viên:</p>
-
-            <div className="mt-4 grid gap-4 md:grid-cols-2">
-              {users.map((u) => (
-                <label
-                  key={u.id}
-                  className="flex cursor-pointer items-center gap-4 rounded-2xl border border-red-100 bg-white px-4 py-3 shadow-sm transition hover:border-red-200"
-                >
-                  <img src={u.thumb} className="h-12 w-12 rounded-xl object-cover" />
-                  <div className="flex-1">
-                    <div className="font-semibold text-slate-900">{u.fullName}</div>
-                  </div>
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 accent-[#D32F2F]"
-                    checked={selected.has(u.id)}
-                    onChange={() => {
-                      setSelected((prev) => {
-                        const n = new Set(prev);
-                        n.has(u.id) ? n.delete(u.id) : n.add(u.id);
-                        return n;
-                      });
-                    }}
-                  />
-                </label>
+            <p className="mt-4 text-sm text-slate-600">Danh sách ứng viên (mỗi dòng 1 tên hoặc phân tách bằng dấu phẩy):</p>
+            <textarea
+              value={candidateInput}
+              onChange={(e) => setCandidateInput(e.target.value)}
+              rows={5}
+              placeholder="Ví dụ: Nguyễn Văn A, Trần Thị B..."
+              className="mt-3 w-full rounded-2xl border border-red-100 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm focus:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-200"
+            />
+            <div className="mt-3 flex flex-wrap gap-2 text-xs">
+              {candidateNames.map((name) => (
+                <span key={name} className="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-600">
+                  {name}
+                </span>
               ))}
             </div>
           </section>
@@ -218,7 +245,8 @@ export default function Admin() {
           <section className="flex flex-wrap gap-3">
             <button
               onClick={createPoll}
-              className="rounded-full bg-[#D32F2F] px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-[#B71C1C]"
+              disabled={!title.trim() || candidateNames.length < 2}
+              className="rounded-full bg-[#D32F2F] px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-[#B71C1C] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none"
             >
               Tạo &amp; Bắt đầu
             </button>
@@ -234,6 +262,29 @@ export default function Admin() {
             >
               Công bố (HIỆN)
             </button>
+          </section>
+
+          <section className="rounded-3xl border border-red-100 bg-white/95 p-6 shadow-md">
+            <h3 className="text-lg font-semibold text-slate-900">Bắt đầu thời gian vote</h3>
+            <p className="mt-2 text-sm text-slate-600">Chọn thời lượng (phút) để hiện đồng hồ cát ở trang kết quả.</p>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <input
+                type="number"
+                min={1}
+                value={timerMinutes}
+                onChange={(e) => setTimerMinutes(Number(e.target.value))}
+                className="w-28 rounded-xl border border-red-100 bg-white px-4 py-2 text-sm text-slate-800 shadow-sm focus:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-200"
+              />
+              <button
+                onClick={() => {
+                  const activePoll = polls.find((poll) => poll.isActive) || polls[0];
+                  if (activePoll) startTimer(activePoll.id);
+                }}
+                className="rounded-full bg-[#FBC02D] px-6 py-2 text-sm font-semibold text-slate-900 shadow-lg transition hover:bg-[#F9A825]"
+              >
+                Bắt đầu đếm giờ
+              </button>
+            </div>
           </section>
 
           <section className="rounded-3xl border border-red-100 bg-white/95 p-6 shadow-md">
@@ -254,6 +305,7 @@ export default function Admin() {
                       />
                       <p className="mt-2 text-xs text-slate-500">
                         Ứng viên: {poll.candidateCount} • Tạo: {new Date(poll.createdAt).toLocaleString("vi-VN")}
+                        {poll.votingEndsAt ? ` • Kết thúc: ${new Date(poll.votingEndsAt).toLocaleString("vi-VN")}` : ""}
                       </p>
                     </div>
                     <label className="text-xs text-slate-600">
@@ -319,6 +371,47 @@ export default function Admin() {
               ))}
               {!polls.length ? (
                 <p className="text-sm text-slate-500">Chưa có poll nào.</p>
+              ) : null}
+            </div>
+          </section>
+
+          <section className="rounded-3xl border border-red-100 bg-white/95 p-6 shadow-md">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h3 className="text-lg font-semibold text-slate-900">Phiếu đã ghi nhận</h3>
+              <button
+                onClick={loadVotes}
+                className="rounded-full border border-red-200 px-4 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-50"
+              >
+                Làm mới danh sách
+              </button>
+            </div>
+            <p className="mt-2 text-sm text-slate-600">
+              {votesPollTitle ? `Theo poll: ${votesPollTitle}` : "Chưa có poll để thống kê."}
+            </p>
+            <div className="mt-4 flex flex-col gap-3">
+              {voters.map((voter) => (
+                <div key={voter.userId} className="rounded-2xl border border-red-100 bg-white px-4 py-3 shadow-sm">
+                  <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <p className="font-semibold text-slate-900">{voter.fullName}</p>
+                      <p className="text-xs text-slate-500">Số phiếu: {voter.count}</p>
+                      {voter.candidateNames?.length ? (
+                        <p className="text-xs text-slate-500">
+                          Đã vote: {voter.candidateNames.join(", ")}
+                        </p>
+                      ) : null}
+                    </div>
+                    <button
+                      onClick={() => resetVotesForUser(voter.userId)}
+                      className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+                    >
+                      Huỷ phiếu người này
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {!voters.length ? (
+                <p className="text-sm text-slate-500">Chưa có lượt vote nào.</p>
               ) : null}
             </div>
           </section>

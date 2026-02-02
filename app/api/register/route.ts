@@ -1,80 +1,59 @@
 import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/db";
 import User from "@/models/User";
-import { createAccessToken, getOrSetDeviceId, setUserSession } from "@/lib/auth";
-import { getClientIp } from "@/lib/request";
+import { createAccessToken, setUserSession } from "@/lib/auth";
 
 export async function POST(req: Request) {
   await dbConnect();
-
-  const deviceId = await getOrSetDeviceId();
-  const clientIp = await getClientIp();
 
   const form = await req.formData();
   const fullName = String(form.get("fullName") || "").trim();
   const photoFile = form.get("photo");
 
-  if (!fullName || !photoFile) {
+  if (!fullName) {
     return NextResponse.json({ error: "Thiếu thông tin." }, { status: 400 });
   }
-  if (!(photoFile instanceof File)) {
-    return NextResponse.json({ error: "Ảnh đại diện không hợp lệ." }, { status: 400 });
-  }
-
-  const existedDevice = await User.findOne({ deviceId }).lean();
-  if (existedDevice) return NextResponse.json({ error: "Máy này đã tạo tài khoản rồi." }, { status: 400 });
-
-  if (clientIp) {
-    const existedIp = await User.findOne({ lastKnownIp: clientIp }).lean();
-    if (existedIp) {
-      return NextResponse.json(
-        { error: "IP này đã tạo tài khoản rồi. Vui lòng đăng nhập trên máy đó." },
-        { status: 400 }
-      );
-    }
+  if (fullName.length > 60) {
+    return NextResponse.json({ error: "Tên không được vượt quá 60 ký tự." }, { status: 400 });
   }
 
   // ✅ Upload lên PHP server (direct link)
   let photo = "";
   let thumb = "";
 
-  try {
-    const uploadForm = new FormData();
-    // IMPORTANT: PHP endpoint nhận field name là "file"
-    uploadForm.append("file", photoFile);
+  if (photoFile instanceof File) {
+    try {
+      const uploadForm = new FormData();
+      // IMPORTANT: PHP endpoint nhận field name là "file"
+      uploadForm.append("file", photoFile);
 
-    // Bạn có thể đưa URL này vào ENV: PHP_UPLOAD_URL
-    const uploadUrl = process.env.PHP_UPLOAD_URL || "https://truongdat.id.vn/api/upload.php";
+      // Bạn có thể đưa URL này vào ENV: PHP_UPLOAD_URL
+      const uploadUrl = process.env.PHP_UPLOAD_URL || "https://truongdat.id.vn/api/upload.php";
 
-    const uploadRes = await fetch(uploadUrl, {
-      method: "POST",
-      body: uploadForm,
-      // headers: { "Authorization": "Bearer YOUR_SECRET" }, // nếu bạn bật auth ở PHP
-    });
+      const uploadRes = await fetch(uploadUrl, {
+        method: "POST",
+        body: uploadForm,
+        // headers: { "Authorization": "Bearer YOUR_SECRET" }, // nếu bạn bật auth ở PHP
+      });
 
-    const uploadData = await uploadRes.json().catch(() => ({} as any));
+      const uploadData = await uploadRes.json().catch(() => ({} as any));
 
-    photo = uploadData?.url || "";
-    thumb = photo; // nếu chưa tạo thumbnail riêng thì dùng tạm photo
+      photo = uploadData?.url || "";
+      thumb = photo; // nếu chưa tạo thumbnail riêng thì dùng tạm photo
 
-    if (!uploadRes.ok || !uploadData?.ok || !photo) {
-      return NextResponse.json(
-        { error: uploadData?.error || "Không thể tải ảnh lên." },
-        { status: 400 }
-      );
+      if (!uploadRes.ok || !uploadData?.ok || !photo) {
+        return NextResponse.json(
+          { error: uploadData?.error || "Không thể tải ảnh lên." },
+          { status: 400 }
+        );
+      }
+    } catch (error) {
+      return NextResponse.json({ error: "Không thể tải ảnh lên." }, { status: 400 });
     }
-  } catch (error) {
-    return NextResponse.json({ error: "Không thể tải ảnh lên." }, { status: 400 });
   }
 
   try {
-    const user = await User.create({
-      fullName,
-      thumb,
-      photo,
-      deviceId,
-      lastKnownIp: clientIp || undefined,
-    });
+    const user = await User.create({ fullName, thumb: thumb || undefined, photo: photo || undefined });
 
     await setUserSession(String(user._id));
 

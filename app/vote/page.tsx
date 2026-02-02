@@ -9,6 +9,7 @@ export default function VotePage() {
   const [selected, setSelected] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [justVoted, setJustVoted] = useState<string[]>([]);
+  const [nowTick, setNowTick] = useState(Date.now());
   const r = useRouter();
   const accessTokenKey = "accessToken";
 
@@ -50,6 +51,14 @@ export default function VotePage() {
     return () => { active = false; };
   }, [r]);
 
+  useEffect(() => {
+    if (!data?.poll?.votingEndsAt) return;
+    const interval = setInterval(() => {
+      setNowTick(Date.now());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [data?.poll?.votingEndsAt]);
+
   async function vote() {
     setMsg("Đang gửi...");
     setSubmitting(true);
@@ -57,7 +66,7 @@ export default function VotePage() {
       const res = await fetch("/api/vote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ candidateUserIds: selected }),
+        body: JSON.stringify({ candidateIds: selected }),
       });
       const d = await res.json();
       if (!res.ok) {
@@ -65,7 +74,7 @@ export default function VotePage() {
         return setMsg(d.error || "Lỗi");
       }
       const votedNames = selected
-        .map((id) => data.candidates.find((c: any) => c.userId === id)?.fullName)
+        .map((id) => data.candidates.find((c: any) => c.candidateId === id)?.fullName)
         .filter(Boolean);
       setJustVoted(votedNames);
       setMsg("Thành công!");
@@ -79,9 +88,11 @@ export default function VotePage() {
 
   // Helper xử lý chọn
   const maxVotes = data?.poll?.maxVotes ?? 3;
+  const votingEndsAt = data?.poll?.votingEndsAt ? new Date(data.poll.votingEndsAt).getTime() : null;
+  const isVotingClosed = Boolean(votingEndsAt && votingEndsAt <= nowTick);
   
   function toggleSelect(candidateId: string) {
-    if (submitting) return; // Chặn khi đang submit
+    if (submitting || isVotingClosed) return; // Chặn khi đang submit hoặc hết giờ
     
     setSelected((prev) => {
       const isSelected = prev.includes(candidateId);
@@ -149,35 +160,31 @@ export default function VotePage() {
           </p>
         </header>
 
+        {isVotingClosed && (
+          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-center text-sm font-semibold text-red-700">
+            Hết thời gian bình chọn. Vui lòng chờ công bố kết quả.
+          </div>
+        )}
+
         {/* CANDIDATES GRID */}
         <section className="grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
           {data.candidates.map((c: any) => {
-            const isSelected = selected.includes(c.userId);
+            const isSelected = selected.includes(c.candidateId);
             return (
               <div
-                key={c.userId}
-                onClick={() => toggleSelect(c.userId)}
+                key={c.candidateId}
+                onClick={() => toggleSelect(c.candidateId)}
                 className={`group relative cursor-pointer overflow-hidden rounded-2xl border-2 bg-white shadow-sm transition-all duration-300 hover:shadow-lg active:scale-95 ${
                   isSelected 
                     ? "border-yellow-400 ring-2 ring-yellow-400 ring-offset-2" 
                     : "border-transparent hover:border-red-100"
                 }`}
               >
-                {/* Image Container */}
-                <div className="relative aspect-[3/4] w-full overflow-hidden bg-slate-100">
-                  <img 
-                    src={c.thumb || c.photo} 
-                    alt={c.fullName} 
-                    className={`h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 ${isSelected ? 'scale-105' : ''}`}
-                    loading="lazy"
-                  />
-                  
-                  {/* Overlay Gradient Name */}
-                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 pt-10">
-                    <h3 className={`font-bold text-white ${isSelected ? 'text-yellow-300' : ''}`}>
-                      {c.fullName}
-                    </h3>
-                  </div>
+                {/* Candidate Card */}
+                <div className={`relative flex aspect-[3/4] w-full items-center justify-center p-6 ${isSelected ? "bg-yellow-50" : "bg-slate-50"}`}>
+                  <h3 className={`text-center text-sm font-bold ${isSelected ? 'text-yellow-700' : 'text-slate-800'}`}>
+                    {c.fullName}
+                  </h3>
 
                   {/* Selection Checkmark Badge */}
                   <div className={`absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full shadow-md transition-all ${
@@ -218,11 +225,11 @@ export default function VotePage() {
              <span className="mr-3 hidden text-xs text-red-600 font-medium md:inline-block">
                {msg}
              </span>
-             <button
+              <button
                 onClick={vote}
-                disabled={selected.length === 0 || submitting}
+                disabled={selected.length === 0 || submitting || isVotingClosed}
                 className={`rounded-full px-8 py-3 text-sm font-bold shadow-lg transition-all ${
-                  selected.length === 0 
+                  selected.length === 0 || isVotingClosed
                     ? "bg-slate-200 text-slate-400 cursor-not-allowed"
                     : submitting 
                       ? "bg-yellow-100 text-yellow-600 cursor-wait"
