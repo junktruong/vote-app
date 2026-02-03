@@ -15,6 +15,7 @@ export async function POST() {
   if (!poll) return NextResponse.json({ error: "Chưa có poll." }, { status: 400 });
 
   poll.revealWinner = true;
+  poll.revealState = "REVEALED";
   await poll.save();
 
   return NextResponse.json({ ok: true });

@@ -89,7 +89,8 @@ export default function VotePage() {
   // Helper xử lý chọn
   const maxVotes = data?.poll?.maxVotes ?? 3;
   const votingEndsAt = data?.poll?.votingEndsAt ? new Date(data.poll.votingEndsAt).getTime() : null;
-  const isVotingClosed = Boolean(votingEndsAt && votingEndsAt <= nowTick);
+  const isPollClosed = data?.poll?.status === "CLOSED";
+  const isVotingClosed = Boolean(isPollClosed || (votingEndsAt && votingEndsAt <= nowTick));
   
   function toggleSelect(candidateId: string) {
     if (submitting || isVotingClosed) return; // Chặn khi đang submit hoặc hết giờ
@@ -160,7 +161,13 @@ export default function VotePage() {
           </p>
         </header>
 
-        {isVotingClosed && (
+        {isPollClosed && (
+          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-center text-sm font-semibold text-red-700">
+            Poll đã đóng. Vui lòng chờ công bố kết quả.
+          </div>
+        )}
+
+        {isVotingClosed && !isPollClosed && (
           <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-center text-sm font-semibold text-red-700">
             Hết thời gian bình chọn. Vui lòng chờ công bố kết quả.
           </div>

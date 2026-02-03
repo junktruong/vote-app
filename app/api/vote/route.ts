@@ -12,6 +12,9 @@ export async function POST(req: Request) {
   const { candidateId, candidateIds } = await req.json();
   const poll = await Poll.findOne({ isActive: true }).sort({ createdAt: -1 }).lean();
   if (!poll) return NextResponse.json({ error: "Không có cuộc bình chọn đang diễn ra." }, { status: 400 });
+  if (poll.status && poll.status !== "OPEN") {
+    return NextResponse.json({ error: "Poll đã đóng." }, { status: 403 });
+  }
   if (poll.votingEndsAt && new Date(poll.votingEndsAt).getTime() <= Date.now()) {
     return NextResponse.json({ error: "Hết thời gian bình chọn." }, { status: 400 });
   }

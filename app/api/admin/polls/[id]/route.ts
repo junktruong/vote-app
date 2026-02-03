@@ -11,7 +11,7 @@ export async function PATCH(req: Request, { params }: Params) {
   await dbConnect();
 
   const pollId = (await params).id;
-  const { title, maxVotes, showOnResults, isActive, revealWinner } = await req.json();
+  const { title, maxVotes, showOnResults, isActive, revealWinner, status } = await req.json();
 
   if (showOnResults === true) {
     await Poll.updateMany({ showOnResults: true }, { $set: { showOnResults: false } });
@@ -29,6 +29,7 @@ export async function PATCH(req: Request, { params }: Params) {
     update.endedAt = isActive ? null : new Date();
   }
   if (typeof revealWinner === "boolean") update.revealWinner = revealWinner;
+  if (typeof status === "string" && ["OPEN", "CLOSED"].includes(status)) update.status = status;
 
   const poll = await Poll.findByIdAndUpdate(pollId, update, { new: true });
   if (!poll) return NextResponse.json({ error: "Không tìm thấy poll." }, { status: 404 });
@@ -39,6 +40,7 @@ export async function PATCH(req: Request, { params }: Params) {
       id: String(poll._id),
       title: poll.title,
       isActive: poll.isActive,
+      status: poll.status ?? "OPEN",
       revealWinner: poll.revealWinner,
       showOnResults: poll.showOnResults,
       maxVotes: poll.maxVotes ?? 3,

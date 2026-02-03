@@ -11,6 +11,7 @@ export async function POST() {
   if (!poll) return NextResponse.json({ error: "Không có poll đang chạy." }, { status: 400 });
 
   poll.isActive = false;
+  poll.status = "CLOSED";
   poll.endedAt = new Date();
   await poll.save();
 
