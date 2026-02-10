@@ -18,6 +18,12 @@ export default function Admin() {
   const [spinSecond, setSpinSecond] = useState("");
   const [spinThird, setSpinThird] = useState("");
 
+  function formatReceiptNumber(value: unknown) {
+    const n = typeof value === "number" ? value : Number.NaN;
+    if (!Number.isInteger(n) || n < 1 || n > 996) return null;
+    return String(n).padStart(3, "0");
+  }
+
   function parseCandidates(input: string) {
     const raw = input
       .split(/\r?\n|,/)
@@ -105,6 +111,18 @@ export default function Admin() {
     await loadPolls();
   }
 
+  async function setViewMode(pollId: string, mode: "RESULTS" | "RECEIPT_SPIN" | "SPIN") {
+    await updatePoll(pollId, { viewMode: mode });
+  }
+
+  async function openVote(pollId: string) {
+    const res = await fetch(`/api/admin/polls/${pollId}/open-vote`, { method: "POST" });
+    const d = await res.json();
+    if (!res.ok) return setMsg(d.error || "Lỗi");
+    setMsg("Đã mở vote.");
+    await loadPolls();
+  }
+
   async function deletePoll(pollId: string) {
     const ok = confirm("Bạn chắc chắn muốn xoá poll này?");
     if (!ok) return;
@@ -122,6 +140,17 @@ export default function Admin() {
     const d = await res.json();
     if (!res.ok) return setMsg(d.error || "Lỗi");
     setMsg("Đã reset phiếu.");
+    await loadVotes();
+  }
+
+  async function resetPoll(pollId: string) {
+    const ok = confirm("Reset poll này? (phiếu + quay may mắn + quay chứng từ + đồng hồ)");
+    if (!ok) return;
+    const res = await fetch(`/api/admin/polls/${pollId}/reset-poll`, { method: "POST" });
+    const d = await res.json();
+    if (!res.ok) return setMsg(d.error || "Lỗi");
+    setMsg("Đã reset poll.");
+    await loadPolls();
     await loadVotes();
   }
 
@@ -165,6 +194,18 @@ export default function Admin() {
     });
     const d = await res.json();
     setMsg(res.ok ? `Đã quay ${d.spinLatestPrize || ""}: ${d.spinLatestNumber || ""}` : (d.error || "Lỗi"));
+    if (res.ok) await loadPolls();
+  }
+
+  async function spinReceipt(pollId: string) {
+    const res = await fetch("/api/admin/receipt-spin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pollId }),
+    });
+    const d = await res.json();
+    const formatted = formatReceiptNumber(d.receiptSpinNumber);
+    setMsg(res.ok ? `Đã quay chứng từ: ${formatted || "---"}` : (d.error || "Lỗi"));
     if (res.ok) await loadPolls();
   }
 
@@ -254,6 +295,12 @@ export default function Admin() {
                 className="rounded-full border border-red-200 bg-white px-6 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-50"
               >
                 Mở trang quay số
+              </button>
+              <button
+                onClick={() => r.push("/receipt-spin")}
+                className="ml-2 rounded-full border border-indigo-200 bg-white px-6 py-2 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-50"
+              >
+                Mở trang quay chứng từ
               </button>
             </div>
           </header>
@@ -359,14 +406,57 @@ export default function Admin() {
                     <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">
                       Quay số: {poll.spinLatestPrize ? `${poll.spinLatestPrize} - ${poll.spinLatestNumber}` : "Chưa quay"}
                     </span>
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">
+                      Chế độ: {poll.viewMode === "SPIN" ? "Quay may mắn" : poll.viewMode === "RECEIPT_SPIN" ? "Quay chứng từ" : "Kết quả"}
+                    </span>
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">
+                      Chứng từ: {formatReceiptNumber(poll.receiptSpinNumber) || "Chưa quay"}
+                    </span>
                   </div>
                   <div className="mt-4 flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setViewMode(poll.id, "RESULTS")}
+                      className={`rounded-full border px-4 py-2 text-xs font-semibold transition ${
+                        poll.viewMode === "RESULTS"
+                          ? "border-slate-300 bg-slate-100 text-slate-700"
+                          : "border-slate-200 text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      Về kết quả
+                    </button>
+                    <button
+                      onClick={() => setViewMode(poll.id, "RECEIPT_SPIN")}
+                      className={`rounded-full border px-4 py-2 text-xs font-semibold transition ${
+                        poll.viewMode === "RECEIPT_SPIN"
+                          ? "border-indigo-300 bg-indigo-100 text-indigo-700"
+                          : "border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                      }`}
+                    >
+                      Sang quay chứng từ
+                    </button>
+                    <button
+                      onClick={() => setViewMode(poll.id, "SPIN")}
+                      className={`rounded-full border px-4 py-2 text-xs font-semibold transition ${
+                        poll.viewMode === "SPIN"
+                          ? "border-purple-300 bg-purple-100 text-purple-700"
+                          : "border-purple-200 text-purple-700 hover:bg-purple-50"
+                      }`}
+                    >
+                      Sang quay may mắn
+                    </button>
                     <button
                       onClick={() => startRevealCountdown(poll.id)}
                       disabled={poll.revealState !== "NOT_STARTED"}
                       className="rounded-full border border-yellow-200 px-4 py-2 text-xs font-semibold text-yellow-700 transition hover:bg-yellow-50 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       Bắt đầu đếm giờ
+                    </button>
+                    <button
+                      onClick={() => spinReceipt(poll.id)}
+                      disabled={poll.receiptSpinState === "REVEALED"}
+                      className="rounded-full border border-indigo-200 px-4 py-2 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      Quay chứng từ (1 lần)
                     </button>
                     <button
                       onClick={() => spinPrize(poll.id, "encourage")}
@@ -399,7 +489,7 @@ export default function Admin() {
                       Quay đặc biệt
                     </button>
                     <button
-                      onClick={() => updatePoll(poll.id, { status: "OPEN" })}
+                      onClick={() => openVote(poll.id)}
                       className="rounded-full border border-emerald-200 px-4 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50"
                     >
                       Mở vote
@@ -415,6 +505,12 @@ export default function Admin() {
                       className="rounded-full border border-orange-200 px-4 py-2 text-xs font-semibold text-orange-700 transition hover:bg-orange-50"
                     >
                       Reset phiếu
+                    </button>
+                    <button
+                      onClick={() => resetPoll(poll.id)}
+                      className="rounded-full border border-red-200 px-4 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-50"
+                    >
+                      Reset poll
                     </button>
                     <button
                       onClick={() => deletePoll(poll.id)}

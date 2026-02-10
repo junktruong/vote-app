@@ -16,10 +16,17 @@ export async function GET() {
   const durationSec = Number.isFinite(Number(poll.countdownDurationSec))
     ? Number(poll.countdownDurationSec)
     : 180;
+  const votingEndsAt = poll.votingEndsAt ? new Date(poll.votingEndsAt).getTime() : null;
   const startedAt = poll.countdownStartedAt ? new Date(poll.countdownStartedAt).getTime() : null;
   let revealState = poll.revealState || "NOT_STARTED";
+  let status = poll.status ?? "OPEN";
   if (poll.revealWinner && revealState !== "REVEALED") {
     revealState = "REVEALED";
+  }
+
+  if (status === "OPEN" && votingEndsAt && now >= votingEndsAt) {
+    status = "CLOSED";
+    await Poll.findByIdAndUpdate(poll._id, { status: "CLOSED", endedAt: new Date() }).catch(() => null);
   }
 
   if (revealState === "COUNTING") {
@@ -58,7 +65,7 @@ export async function GET() {
       id: String(poll._id),
       title: poll.title,
       isActive: poll.isActive,
-      status: poll.status ?? "OPEN",
+      status,
       revealState,
       countdownStartedAt: poll.countdownStartedAt ?? null,
       countdownDurationSec: durationSec,
@@ -69,6 +76,10 @@ export async function GET() {
       spinRevealedAt: poll.spinRevealedAt ?? null,
       spinLatestNumber: poll.spinLatestNumber ?? null,
       spinLatestPrize: poll.spinLatestPrize ?? null,
+      receiptSpinState: poll.receiptSpinState ?? "IDLE",
+      receiptSpinNumber: poll.receiptSpinNumber ?? null,
+      receiptSpinRevealedAt: poll.receiptSpinRevealedAt ?? null,
+      viewMode: poll.viewMode ?? "RESULTS",
       revealWinner: poll.revealWinner,
       showOnResults: poll.showOnResults,
       maxVotes: poll.maxVotes ?? 3,

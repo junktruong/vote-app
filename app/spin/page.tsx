@@ -1,10 +1,12 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 const TOTAL_NUMBERS = 80;
 const CANVAS_SIZE = 1200; 
 
 export default function SpinPage() {
+  const r = useRouter();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -14,6 +16,7 @@ export default function SpinPage() {
   const [showResult, setShowResult] = useState(false);
   const [lastNumber, setLastNumber] = useState<number | null>(null);
   const [lastPrize, setLastPrize] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<string | null>(null);
 
   const lastWinner = useRef<string | null>(null);
   const currentRotation = useRef(0);
@@ -141,7 +144,7 @@ export default function SpinPage() {
       finalAngle += TAU;
     }
 
-    const duration = 8000;
+    const duration = 20000;
     const startTime = performance.now();
     const startAngle = currentRotation.current;
     const change = finalAngle - startAngle;
@@ -200,12 +203,19 @@ export default function SpinPage() {
       const name = d.poll.spinWinnerName || null;
       const latestNumber = normalizeNumber(d.poll.spinLatestNumber);
       const latestPrize = d.poll.spinLatestPrize || null;
+      const mode = d.poll.viewMode || "RESULTS";
 
       setSpinState(state);
       setWinnerName(name);
       setLastNumber(latestNumber);
       setLastPrize(latestPrize);
+      setViewMode(mode);
       setMsg(state === "REVEALED" ? "" : "Đang chờ admin quay số...");
+
+      if (state !== "REVEALED" || !latestNumber) {
+        lastWinner.current = null;
+        setShowResult(false);
+      }
 
       if (state === "REVEALED" && latestNumber && lastWinner.current !== String(latestNumber)) {
         lastWinner.current = String(latestNumber);
@@ -226,6 +236,17 @@ export default function SpinPage() {
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!viewMode) return;
+    if (viewMode === "RECEIPT_SPIN") {
+      r.push("/receipt-spin");
+      return;
+    }
+    if (viewMode !== "SPIN") {
+      r.push("/results");
+    }
+  }, [viewMode, r]);
 
   return (
     // NỀN: Đỏ đậm (Red 900) -> Phong cách sang trọng, ấm cúng ngày Tết

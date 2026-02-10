@@ -12,11 +12,16 @@ export async function POST(_req: Request, { params }: Params) {
   if (!poll) return NextResponse.json({ error: "Không tìm thấy poll." }, { status: 404 });
 
   if (poll.revealState === "NOT_STARTED") {
+    const durationSec = Number.isFinite(Number(poll.countdownDurationSec)) ? Number(poll.countdownDurationSec) : 180;
+    const now = Date.now();
     poll.revealState = "COUNTING";
     poll.countdownStartedAt = new Date();
-    if (!Number.isFinite(Number(poll.countdownDurationSec))) {
-      poll.countdownDurationSec = 180;
-    }
+    poll.countdownDurationSec = durationSec;
+    poll.status = "OPEN";
+    poll.isActive = true;
+    poll.endedAt = null;
+    poll.votingEndsAt = new Date(now + durationSec * 1000);
+    poll.viewMode = "RESULTS";
     await poll.save();
   }
 

@@ -16,6 +16,7 @@ export async function POST() {
 
   poll.revealWinner = true;
   poll.revealState = "REVEALED";
+  poll.viewMode = "RESULTS";
   await poll.save();
 
   return NextResponse.json({ ok: true });

@@ -11,7 +11,7 @@ export async function PATCH(req: Request, { params }: Params) {
   await dbConnect();
 
   const pollId = (await params).id;
-  const { title, maxVotes, showOnResults, isActive, revealWinner, status } = await req.json();
+  const { title, maxVotes, showOnResults, isActive, revealWinner, status, viewMode } = await req.json();
 
   if (showOnResults === true) {
     await Poll.updateMany({ showOnResults: true }, { $set: { showOnResults: false } });
@@ -30,6 +30,7 @@ export async function PATCH(req: Request, { params }: Params) {
   }
   if (typeof revealWinner === "boolean") update.revealWinner = revealWinner;
   if (typeof status === "string" && ["OPEN", "CLOSED"].includes(status)) update.status = status;
+  if (typeof viewMode === "string" && ["RESULTS", "RECEIPT_SPIN", "SPIN"].includes(viewMode)) update.viewMode = viewMode;
 
   const poll = await Poll.findByIdAndUpdate(pollId, update, { new: true });
   if (!poll) return NextResponse.json({ error: "Không tìm thấy poll." }, { status: 404 });
@@ -43,6 +44,9 @@ export async function PATCH(req: Request, { params }: Params) {
       status: poll.status ?? "OPEN",
       revealWinner: poll.revealWinner,
       showOnResults: poll.showOnResults,
+      viewMode: poll.viewMode ?? "RESULTS",
+      receiptSpinState: poll.receiptSpinState ?? "IDLE",
+      receiptSpinNumber: poll.receiptSpinNumber ?? null,
       maxVotes: poll.maxVotes ?? 3,
     },
   });

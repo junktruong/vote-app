@@ -73,12 +73,30 @@ export default function Results() {
   }, [r]);
 
   const effectiveRevealState = localRevealState ?? data?.poll?.revealState ?? null;
+  const viewMode = data?.poll?.viewMode ?? "RESULTS";
 
   useEffect(() => {
-    if (!data?.poll) return;
-    if (lastReveal.current !== "REVEALED" && effectiveRevealState === "REVEALED") {
+    if (viewMode === "RECEIPT_SPIN") {
+      r.push("/receipt-spin");
+      return;
+    }
+    if (viewMode === "SPIN") {
+      r.push("/spin");
+    }
+  }, [viewMode, r]);
+
+  useEffect(() => {
+    if (effectiveRevealState !== "REVEALED") {
+      setRevealCountdown(null);
+      setShowCongrats(false);
+      lastReveal.current = effectiveRevealState;
+      return;
+    }
+
+    if (lastReveal.current !== "REVEALED") {
       setShowCongrats(false);
       setRevealCountdown(3);
+      lastReveal.current = "REVEALED";
       let current = 3;
       const timer = setInterval(() => {
         current -= 1;
@@ -86,16 +104,16 @@ export default function Results() {
           clearInterval(timer);
           setRevealCountdown(null);
           setShowCongrats(true);
-          // Logic cũ của bạn: tắt sau 2 giây. 
-          // Gợi ý: Có thể tăng lên 5s để ngắm hiệu ứng lâu hơn nếu muốn.
-          setTimeout(() => setShowCongrats(false), 5000); 
         } else {
           setRevealCountdown(current);
         }
       }, 1000);
+      return () => clearInterval(timer);
     }
+
+    setShowCongrats(true);
     lastReveal.current = effectiveRevealState;
-  }, [data?.poll, effectiveRevealState]);
+  }, [effectiveRevealState]);
 
   useEffect(() => {
     if (!data?.poll?.countdownStartedAt || effectiveRevealState !== "COUNTING") {
@@ -135,11 +153,19 @@ export default function Results() {
   }, [effectiveRevealState]);
 
   // --- LOGIC HIỂN THỊ ---
+  const countdownDurationSec = Number.isFinite(Number(data?.poll?.countdownDurationSec))
+    ? Number(data?.poll?.countdownDurationSec)
+    : 180;
+  const formatCountdown = (totalSec: number) => {
+    const safe = Math.max(0, Math.floor(totalSec));
+    const minutes = Math.floor(safe / 60);
+    const seconds = safe % 60;
+    return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+  };
   const remainingSeconds = remainingSec ?? 0;
-  const remainingMinutes = remainingSec !== null ? Math.floor(remainingSeconds / 60) : 0;
   const remainingDisplay = remainingSec === null
-    ? "00:00"
-    : `${remainingMinutes.toString().padStart(2, "0")}:${(remainingSeconds % 60).toString().padStart(2, "0")}`;
+    ? (effectiveRevealState === "NOT_STARTED" ? formatCountdown(countdownDurationSec) : "00:00")
+    : formatCountdown(remainingSeconds);
 
   // Loading Screen
   if (!data) return (
@@ -243,7 +269,7 @@ export default function Results() {
                 className="relative mx-4 w-full max-w-lg overflow-hidden rounded-3xl border border-yellow-500/50 bg-gradient-to-b from-slate-900 to-black p-10 text-center shadow-[0_0_60px_rgba(234,179,8,0.3)]"
               >
                 {/* Pháo hoa chỉ hiện khi chúc mừng */}
-                <Confetti width={width} height={height} numberOfPieces={500} recycle={false} gravity={0.2} />
+                <Confetti width={width} height={height} numberOfPieces={350} recycle gravity={0.2} />
                 
                 <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100"></div>
 
