@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Confetti from "react-confetti";
+import { usePageMusic } from "@/lib/use-page-music";
 
 const MIN_NUMBER = 1;
 const MAX_NUMBER = 996;
@@ -74,6 +75,7 @@ function normalizeReceiptNumber(value: unknown) {
 
 function formatNumber(value: number | null) {
   if (!Number.isFinite(Number(value))) return "---";
+  if (value === null) return "???";
   return String(value).padStart(3, "0");
 }
 
@@ -85,8 +87,16 @@ export default function ReceiptSpinPage() {
   const [viewMode, setViewMode] = useState<string | null>(null);
   const [displayNumber, setDisplayNumber] = useState<number | null>(null);
   const [showResult, setShowResult] = useState(false);
+  const [isSpinAudioActive, setIsSpinAudioActive] = useState(false);
   const [missingVehicleImages, setMissingVehicleImages] = useState<Record<string, boolean>>({});
   const [vehicleImageIndex, setVehicleImageIndex] = useState<Record<string, number>>({});
+  const { playReveal } = usePageMusic({
+    backgroundSrc: "/music/spin.mp3",
+    backgroundEnabled: isSpinAudioActive,
+    revealSrc: "/music/winner.mp3",
+    backgroundVolume: 0.3,
+    revealVolume: 0.95,
+  });
 
   const lastResultNumber = useRef<number | null>(null);
   const isRolling = useRef(false);
@@ -133,6 +143,7 @@ export default function ReceiptSpinPage() {
   const startRevealAnimation = (targetNumber: number) => {
     clearTimers();
     isRolling.current = true;
+    setIsSpinAudioActive(true);
     setShowResult(false);
 
     const totalDurationMs = 15000 + Math.floor(Math.random() * 5001); // 15-20s
@@ -155,6 +166,7 @@ export default function ReceiptSpinPage() {
     finishTimer.current = setTimeout(() => {
       clearTimers();
       isRolling.current = false;
+      setIsSpinAudioActive(false);
       setDisplayNumber(targetNumber);
       setShowResult(true);
     }, totalDurationMs);
@@ -184,6 +196,7 @@ export default function ReceiptSpinPage() {
         }
       } else {
         setShowResult(false);
+        setIsSpinAudioActive(false);
         setDisplayNumber(null);
       }
     } catch {}
@@ -236,6 +249,11 @@ export default function ReceiptSpinPage() {
     }
   }, [viewMode, r]);
 
+  useEffect(() => {
+    if (!showResult) return;
+    playReveal();
+  }, [showResult, playReveal]);
+
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[#0f172a] px-4 text-slate-100">
       <div className="absolute inset-0 opacity-30">
@@ -243,7 +261,7 @@ export default function ReceiptSpinPage() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,_rgba(168,85,247,0.16),_transparent_60%)]" />
       </div>
 
-      {showResult ? <Confetti width={width} height={height} recycle gravity={0.25} numberOfPieces={220} /> : null}
+      {showResult ? <Confetti z-index={100} width={width} height={height} recycle gravity={0.25} numberOfPieces={220} /> : null}
 
       <section className="relative z-10 w-full max-w-3xl rounded-3xl border border-cyan-400/30 bg-slate-900/70 p-8 text-center shadow-[0_25px_80px_rgba(34,211,238,0.18)] backdrop-blur-sm sm:p-12">
         <h1 className="text-3xl font-black uppercase tracking-[0.2em] leading-[1.25] text-transparent bg-clip-text bg-gradient-to-b from-cyan-100 via-cyan-300 to-cyan-500 sm:text-5xl sm:leading-[1.3]">
@@ -258,7 +276,7 @@ export default function ReceiptSpinPage() {
             {VEHICLES.map((vehicle) => (
               <div key={vehicle.key} className={`absolute ${vehicle.positionClassName}`}>
                 <div
-                  className="relative h-24 w-24 sm:h-50 sm:w-50"
+                  className="relative h-24 w-24 sm:h-70 sm:w-70"
                   style={{ animation: `spin ${VEHICLE_SPIN_DURATION_SEC}s linear infinite reverse` }}
                 >
                   {missingVehicleImages[vehicle.key] ? (

@@ -42,6 +42,8 @@ const PollSchema = new Schema(
     spinSecondIndex: { type: Number, default: 0 },
     spinThirdIndex: { type: Number, default: 0 },
     spinEncourageCount: { type: Number, default: 0 },
+    spinThirdLimit: { type: Number, default: 3 },
+    spinEncourageLimit: { type: Number, default: 5 },
     spinLatestNumber: { type: Number, default: null },
     spinLatestPrize: { type: String, default: null },
     viewMode: { type: String, enum: ["RESULTS", "RECEIPT_SPIN", "SPIN"], default: "RESULTS" },

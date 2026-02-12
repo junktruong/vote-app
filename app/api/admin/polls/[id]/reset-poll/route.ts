@@ -34,6 +34,8 @@ export async function POST(_req: Request, { params }: Params) {
       spinSecondIndex: 0,
       spinThirdIndex: 0,
       spinEncourageCount: 0,
+      spinThirdLimit: 3,
+      spinEncourageLimit: 5,
       spinLatestNumber: null,
       spinLatestPrize: null,
       viewMode: "RESULTS",

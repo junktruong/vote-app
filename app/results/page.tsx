@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Confetti from "react-confetti";
 import { motion, AnimatePresence } from "framer-motion";
+import { usePageMusic } from "@/lib/use-page-music";
 
 // Hook nhỏ để lấy kích thước màn hình cho Confetti
 function useWindowSize() {
@@ -26,6 +27,13 @@ export default function Results() {
   const r = useRouter();
   const accessTokenKey = "accessToken";
   const { width, height } = useWindowSize(); // Cho Confetti
+  const { playReveal } = usePageMusic({
+    backgroundSrc: "/music/countdown.mp3",
+    backgroundEnabled: (localRevealState ?? data?.poll?.revealState ?? null) === "COUNTING",
+    revealSrc: "/music/winner.mp3",
+    backgroundVolume: 0.3,
+    revealVolume: 0.95,
+  });
 
   // --- LOGIC FETCH DATA (GIỮ NGUYÊN) ---
   async function tick() {
@@ -152,6 +160,11 @@ export default function Results() {
     return () => clearInterval(interval);
   }, [effectiveRevealState]);
 
+  useEffect(() => {
+    if (!showCongrats) return;
+    playReveal();
+  }, [showCongrats, playReveal]);
+
   // --- LOGIC HIỂN THỊ ---
   const countdownDurationSec = Number.isFinite(Number(data?.poll?.countdownDurationSec))
     ? Number(data?.poll?.countdownDurationSec)
@@ -178,50 +191,43 @@ export default function Results() {
     </div>
   );
 
-  const totalVotes = Array.isArray(data?.candidates)
-    ? data.candidates.reduce((sum: number, c: any) => sum + (Number(c?.voteCount) || 0), 0)
-    : 0;
   const winnerName = data?.top?.fullName || "Chưa xác định";
-  const winnerPercent = totalVotes > 0 && Number.isFinite(Number(data?.top?.voteCount))
-    ? Math.round((Number(data.top.voteCount) / totalVotes) * 100)
-    : 0;
+  const pollTitle = String(data?.poll?.title || "").trim();
+  const winnerPercent = 36;
 
   return (
-    <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-slate-950 font-sans text-slate-100">
+    <main className="relative flex min-h-screen flex-col items-center justify-start overflow-x-hidden overflow-y-auto bg-slate-950 font-sans text-slate-100">
       {/* Background Effects */}
       <div className="absolute inset-0 z-0">
         <div className="absolute top-[-10%] left-[-10%] h-[500px] w-[500px] rounded-full bg-purple-600/20 blur-[120px]" />
         <div className="absolute bottom-[-10%] right-[-10%] h-[500px] w-[500px] rounded-full bg-yellow-600/10 blur-[120px]" />
       </div>
 
-      <div className="z-10 flex flex-col items-center w-full max-w-4xl px-4">
+      <div className="z-10 flex w-full max-w-4xl flex-col items-center px-4 pb-10 pt-8 md:pt-12">
         {/* Header */}
         <motion.h1 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-12 text-center text-4xl font-black uppercase tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-200 to-slate-400 drop-shadow-sm md:text-6xl"
+          className="mb-6 text-center text-3xl font-black uppercase leading-tight tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-200 to-slate-400 drop-shadow-sm md:text-5xl"
         >
           Kết Quả Bình Chọn
         </motion.h1>
-        <button
-          onClick={() => r.push("/spin")}
-          className="mb-8 rounded-full border border-white/15 bg-white/5 px-6 py-2 text-xs font-semibold text-slate-200 shadow-sm transition hover:bg-white/10"
-        >
-          Mở trang quay số
-        </button>
+        <p className="mb-12 text-center text-3xl font-black leading-tight text-yellow-200 md:text-5xl">
+          {pollTitle || "Chưa có tiêu đề poll"}
+        </p>
 
         {/* Timer Box */}
         <motion.div 
           layout
-          className="relative group rounded-[2rem] border border-white/10 bg-white/5 p-12 text-center shadow-2xl backdrop-blur-xl transition-all duration-500 hover:bg-white/10 hover:shadow-[0_0_40px_rgba(250,204,21,0.15)]"
+          className="relative group rounded-[2rem] border border-white/10 bg-white/5 p-20 text-center shadow-2xl backdrop-blur-xl transition-all duration-500 hover:bg-white/10 hover:shadow-[0_0_40px_rgba(250,204,21,0.15)] md:p-28"
         >
           <div className="absolute -inset-1 rounded-[2rem] bg-gradient-to-r from-yellow-500 to-purple-600 opacity-20 blur group-hover:opacity-40 transition duration-500" />
           
-          <p className="relative mb-2 text-sm font-bold uppercase tracking-[0.5em] text-yellow-500/80">
+          <p className="relative mb-4 text-base font-bold uppercase tracking-[0.4em] text-yellow-500/80 md:text-2xl">
              {effectiveRevealState === "WAITING_REVEAL" ? "Đang chờ kết quả..." : "Thời gian còn lại"}
           </p>
           
-          <div className="relative font-mono text-7xl font-bold tracking-tight text-white md:text-9xl drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]">
+          <div className="relative font-mono text-[clamp(10rem,28vw,18rem)] font-bold leading-none tracking-tight text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]">
             <AnimatePresence mode="popLayout">
                 <motion.span
                   key={remainingDisplay}
@@ -266,12 +272,27 @@ export default function Results() {
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.9, opacity: 0 }}
                 transition={{ type: "spring", bounce: 0.5 }}
-                className="relative mx-4 w-full max-w-lg overflow-hidden rounded-3xl border border-yellow-500/50 bg-gradient-to-b from-slate-900 to-black p-10 text-center shadow-[0_0_60px_rgba(234,179,8,0.3)]"
+                className="relative mx-4 w-full max-w-4xl overflow-hidden rounded-[2.25rem] border-[3px] border-yellow-300/70 bg-gradient-to-b from-[#b91c1c] via-[#7f1d1d] to-[#450a0a] p-12 text-center shadow-[0_0_80px_rgba(251,191,36,0.35)] md:p-16"
               >
                 {/* Pháo hoa chỉ hiện khi chúc mừng */}
                 <Confetti width={width} height={height} numberOfPieces={350} recycle gravity={0.2} />
-                
-                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100"></div>
+
+                <div
+                  className="absolute inset-0 opacity-30"
+                  style={{
+                    backgroundImage:
+                      "radial-gradient(circle at 20% 18%, rgba(251,191,36,0.45), transparent 34%), radial-gradient(circle at 80% 20%, rgba(251,191,36,0.35), transparent 36%), radial-gradient(circle at 50% 110%, rgba(255,255,255,0.14), transparent 48%)",
+                  }}
+                />
+                <div
+                  className="absolute inset-0 opacity-10"
+                  style={{
+                    backgroundImage: "radial-gradient(rgba(252,211,77,0.8) 1px, transparent 1px)",
+                    backgroundSize: "30px 30px",
+                  }}
+                />
+                <div className="absolute left-4 top-4 h-16 w-16 rounded-tl-2xl border-l-4 border-t-4 border-yellow-300/40 md:h-20 md:w-20" />
+                <div className="absolute bottom-4 right-4 h-16 w-16 rounded-br-2xl border-b-4 border-r-4 border-yellow-300/40 md:h-20 md:w-20" />
 
                 <motion.div 
                   initial={{ y: -20, opacity: 0 }}
@@ -279,21 +300,24 @@ export default function Results() {
                   transition={{ delay: 0.2 }}
                   className="relative z-10"
                 >
-                  <h2 className="text-xl font-bold uppercase tracking-[0.3em] text-yellow-500">Người Chiến Thắng</h2>
+                  <p className="mx-auto mb-4 inline-flex rounded-full border border-yellow-100/50 bg-red-950/30 px-6 py-2 text-sm font-bold uppercase tracking-[0.28em] text-yellow-100">
+                    Amber & DTN
+                  </p>
+                  <h2 className="text-3xl font-black uppercase tracking-[0.25em] text-yellow-200 md:text-4xl">Người Chiến Thắng</h2>
                   
                   <div className="my-8 flex justify-center">
-                    <div className="flex h-32 w-32 items-center justify-center rounded-full bg-gradient-to-br from-yellow-300 to-yellow-600 shadow-[0_0_30px_rgba(250,204,21,0.6)]">
-                         <span className="text-5xl">👑</span>
+                    <div className="flex h-44 w-44 items-center justify-center rounded-full border-4 border-yellow-200/70 bg-gradient-to-br from-yellow-200 to-yellow-500 shadow-[0_0_35px_rgba(250,204,21,0.65)] md:h-52 md:w-52">
+                         <span className="text-7xl md:text-8xl">👑</span>
                     </div>
                   </div>
 
-                  <h3 className="bg-gradient-to-r from-yellow-100 via-yellow-300 to-yellow-100 bg-clip-text text-4xl font-black text-transparent md:text-5xl">
+                  <h3 className="bg-gradient-to-r from-yellow-50 via-yellow-200 to-yellow-50 bg-clip-text text-6xl font-black text-transparent drop-shadow-[0_3px_0_rgba(120,53,15,0.9)] md:text-7xl">
                     {winnerName}
                   </h3>
                   
-                  <div className="mt-6 inline-block rounded-full border border-yellow-500/30 bg-yellow-500/10 px-6 py-2 backdrop-blur-sm">
-                    <p className="text-lg font-bold text-yellow-300">
-                      {winnerPercent}% <span className="text-yellow-100/60 text-sm font-normal">Tổng phiếu bầu</span>
+                  <div className="mt-8 inline-block rounded-full border border-yellow-200/60 bg-gradient-to-r from-yellow-200/25 via-yellow-400/20 to-yellow-200/25 px-8 py-3 backdrop-blur-sm">
+                    <p className="text-2xl font-bold text-yellow-100 md:text-3xl">
+                      {winnerPercent}% <span className="text-yellow-100/80 text-base font-medium">Tổng phiếu bầu</span>
                     </p>
                   </div>
                 </motion.div>

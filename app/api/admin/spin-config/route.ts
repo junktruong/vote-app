@@ -27,7 +27,6 @@ export async function POST(req: Request) {
   const special = parseNumbers(String(payload?.special || ""));
   const first = parseNumbers(String(payload?.first || ""));
   const second = parseNumbers(String(payload?.second || ""));
-  const third = parseNumbers(String(payload?.third || ""));
 
   if (special.length !== 1) {
     return NextResponse.json({ error: "Giải đặc biệt phải đúng 1 số." }, { status: 400 });
@@ -38,17 +37,21 @@ export async function POST(req: Request) {
   if (second.length !== 2) {
     return NextResponse.json({ error: "Giải nhì phải đúng 2 số." }, { status: 400 });
   }
-  if (third.length !== 3) {
-    return NextResponse.json({ error: "Giải ba phải đúng 3 số." }, { status: 400 });
+
+  const configured = [special[0], first[0], ...second];
+  if (new Set(configured).size !== configured.length) {
+    return NextResponse.json({ error: "Số cấu hình đặc biệt/nhất/nhì không được trùng nhau." }, { status: 400 });
   }
 
   poll.spinConfigSpecial = special[0];
   poll.spinConfigFirst = first[0];
   poll.spinConfigSecond = second;
-  poll.spinConfigThird = third;
+  poll.spinConfigThird = [];
   poll.spinSecondIndex = 0;
   poll.spinThirdIndex = 0;
   poll.spinEncourageCount = 0;
+  poll.spinThirdLimit = 3;
+  poll.spinEncourageLimit = 5;
   poll.spinDrawnNumbers = [];
   poll.spinHistory = [];
   poll.spinLatestNumber = null;

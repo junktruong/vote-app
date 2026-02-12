@@ -1,14 +1,25 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { usePageMusic } from "@/lib/use-page-music";
 
 const TOTAL_NUMBERS = 80;
 const CANVAS_SIZE = 1200; 
+
+function createShuffledNumbers(total: number) {
+  const numbers = Array.from({ length: total }, (_, idx) => idx + 1);
+  for (let i = numbers.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [numbers[i], numbers[j]] = [numbers[j], numbers[i]];
+  }
+  return numbers;
+}
 
 export default function SpinPage() {
   const r = useRouter();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const wheelNumbers = useRef<number[]>(createShuffledNumbers(TOTAL_NUMBERS));
 
   const [winnerName, setWinnerName] = useState<string | null>(null);
   const [spinState, setSpinState] = useState<string | null>(null);
@@ -17,12 +28,20 @@ export default function SpinPage() {
   const [lastNumber, setLastNumber] = useState<number | null>(null);
   const [lastPrize, setLastPrize] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<string | null>(null);
+  const [isSpinAudioActive, setIsSpinAudioActive] = useState(false);
+  const { playReveal } = usePageMusic({
+    backgroundSrc: "/music/spin.mp3",
+    backgroundEnabled: isSpinAudioActive,
+    revealSrc: "/music/winner.mp3",
+    backgroundVolume: 0.3,
+    revealVolume: 0.95,
+  });
 
   const lastWinner = useRef<string | null>(null);
   const currentRotation = useRef(0);
   const isSpinning = useRef(false);
 
-  function normalizeNumber(value: any) {
+  function normalizeNumber(value: unknown) {
     const n = Number(value);
     if (!Number.isFinite(n) || n < 1 || n > TOTAL_NUMBERS) return null;
     return n;
@@ -77,7 +96,7 @@ export default function SpinPage() {
 
     // 2. Các múi: XEN KẼ ĐỎ & VÀNG
     for (let i = 0; i < TOTAL_NUMBERS; i += 1) {
-      const num = i + 1;
+      const num = wheelNumbers.current[i];
       const angle = i * step - Math.PI / 2;
 
       ctx.beginPath();
@@ -124,6 +143,7 @@ export default function SpinPage() {
   function startSpinAnimation(targetNumber: number) {
     if (isSpinning.current) return;
     isSpinning.current = true;
+    setIsSpinAudioActive(true);
     setShowResult(false);
 
     // Reset Zoom
@@ -135,16 +155,18 @@ export default function SpinPage() {
     currentRotation.current = ((currentRotation.current % TAU) + TAU) % TAU;
 
     const step = TAU / TOTAL_NUMBERS;
-    const targetIndex = targetNumber - 1;
-    const baseTarget = -(targetIndex * step + step / 2);
-    const fullSpins = 5 + Math.floor(Math.random() * 4);
+    const targetIndex = wheelNumbers.current.indexOf(targetNumber);
+    const safeTargetIndex = targetIndex >= 0 ? targetIndex : targetNumber - 1;
+    const baseTarget = -(safeTargetIndex * step + step / 2);
+    // Giảm nhẹ tốc độ quay tổng thể để chuyển động đỡ gắt/đỡ giật.
+    const fullSpins = 5 + Math.floor(Math.random() * 3);
     let finalAngle = baseTarget + fullSpins * TAU;
 
     while (finalAngle < currentRotation.current + TAU) {
       finalAngle += TAU;
     }
 
-    const duration = 20000;
+    const duration = 23000;
     const startTime = performance.now();
     const startAngle = currentRotation.current;
     const change = finalAngle - startAngle;
@@ -158,7 +180,6 @@ export default function SpinPage() {
       drawWheel();
 
       // --- LOGIC ZOOM & MOVE DOWN ---
-     // --- LOGIC ZOOM & MOVE DOWN ---
       if (containerRef.current) {
         // SỬA: Bắt đầu zoom sớm hơn (khi t > 0.2) để hiệu ứng kéo dài lâu hơn
         if (t > 0.2) {
@@ -166,10 +187,13 @@ export default function SpinPage() {
             const animProgress = (t - 0.2) / 0.8; 
             const animEase = 1 - Math.pow(1 - animProgress, 3);
             
-            // Zoom to hơn (1.6x)
-            const scale = 1 + (animEase * 0.6); 
-            // Hạ thấp xuống
-            const translateY = animEase * 200; 
+            // Tăng thêm ~1.5 lần so với mức zoom hiện tại (tối đa ~3.05x)
+            const scale = 1 + (animEase * 2.05);
+
+            // Fix cứng theo yêu cầu: chỉ hạ tối đa 200px rồi giữ nguyên.
+            const moveProgress = Math.min(animProgress / 0.55, 1);
+            const moveEase = 1 - Math.pow(1 - moveProgress, 3);
+            const translateY = moveEase * 100;
 
             containerRef.current.style.transform = `scale(${scale}) translateY(${translateY}px)`;
         } else {
@@ -183,6 +207,7 @@ export default function SpinPage() {
         currentRotation.current = ((currentRotation.current % TAU) + TAU) % TAU;
         drawWheel();
         isSpinning.current = false;
+        setIsSpinAudioActive(false);
         setTimeout(() => setShowResult(true), 800);
       }
     }
@@ -215,6 +240,7 @@ export default function SpinPage() {
       if (state !== "REVEALED" || !latestNumber) {
         lastWinner.current = null;
         setShowResult(false);
+        setIsSpinAudioActive(false);
       }
 
       if (state === "REVEALED" && latestNumber && lastWinner.current !== String(latestNumber)) {
@@ -247,6 +273,11 @@ export default function SpinPage() {
       r.push("/results");
     }
   }, [viewMode, r]);
+
+  useEffect(() => {
+    if (!showResult || spinState !== "REVEALED") return;
+    playReveal();
+  }, [showResult, spinState, playReveal]);
 
   return (
     // NỀN: Đỏ đậm (Red 900) -> Phong cách sang trọng, ấm cúng ngày Tết
@@ -301,42 +332,42 @@ export default function SpinPage() {
       {/* POPUP KẾT QUẢ: PHONG CÁCH BAO LÌ XÌ */}
      {showResult && spinState === "REVEALED" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-500">
-          <div className="relative w-full max-w-sm scale-110 overflow-hidden rounded-2xl border-2 border-yellow-500 bg-red-900 shadow-[0_0_60px_rgba(234,179,8,0.5)]">
+          <div className="relative aspect-square w-[min(92vw,42rem)] scale-[1.12] overflow-hidden rounded-3xl border-2 border-yellow-500 bg-red-900 shadow-[0_0_80px_rgba(234,179,8,0.55)]">
             
             {/* Hiệu ứng ánh sáng nền sau số */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-64 w-64 bg-yellow-500 blur-[80px] opacity-20"></div>
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-96 w-96 bg-yellow-500 blur-[100px] opacity-25"></div>
 
-            <div className="relative flex flex-col items-center p-8 text-center">
+            <div className="relative flex h-full flex-col items-center justify-center p-6 text-center sm:p-10">
                 
                 <p className="mb-2 text-sm font-bold uppercase tracking-[0.3em] text-yellow-200 opacity-80">
                     Con số may mắn
                 </p>
 
                 {/* SỐ TRÚNG THƯỞNG: Gradient Vàng + Bóng Đổ Dày */}
-                <p className="my-2 text-9xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white via-yellow-300 to-yellow-600 drop-shadow-[0_4px_0_rgba(180,83,9,1)] filter">
+                <p className="my-2 text-[clamp(6.5rem,18vw,15rem)] leading-none font-black text-transparent bg-clip-text bg-gradient-to-b from-white via-yellow-300 to-yellow-600 drop-shadow-[0_6px_0_rgba(180,83,9,1)] filter">
                   {lastNumber ? String(lastNumber).padStart(2, "0") : "--"}
                 </p>
 
-                <div className="my-6 h-px w-32 bg-gradient-to-r from-transparent via-yellow-500 to-transparent"></div>
+                <div className="my-5 h-px w-40 bg-gradient-to-r from-transparent via-yellow-500 to-transparent sm:my-6 sm:w-48"></div>
 
                 {/* TÊN GIẢI: Nền Vàng Khối + Chữ Đỏ Đậm */}
                 {lastPrize && (
-                    <div className="mb-4 w-full rounded-xl bg-gradient-to-r from-yellow-300 via-yellow-500 to-yellow-300 px-4 py-3 shadow-[0_5px_15px_rgba(234,179,8,0.4)] border border-yellow-200">
-                        <p className="text-2xl font-black uppercase text-[#7f1d1d] tracking-wide">
+                    <div className="mb-4 w-full rounded-xl bg-gradient-to-r from-yellow-300 via-yellow-500 to-yellow-300 px-5 py-3 shadow-[0_5px_15px_rgba(234,179,8,0.4)] border border-yellow-200 sm:mb-5 sm:px-6 sm:py-4">
+                        <p className="text-2xl font-black uppercase text-[#7f1d1d] tracking-wide sm:text-3xl">
                             {lastPrize}
                         </p>
                     </div>
                 )}
                 
                 {/* Tên người thắng: Sáng và Rõ */}
-                <p className="text-xl font-bold text-white drop-shadow-md">
+                <p className="text-xl font-bold text-white drop-shadow-md sm:text-2xl">
                    Người nhận: <span className="text-yellow-300">{winnerName || "Chưa xác định"}</span>
                 </p>
             </div>
             
             {/* Trang trí góc bao lì xì */}
-            <div className="absolute top-0 left-0 w-16 h-16 border-t-4 border-l-4 border-yellow-500/30 rounded-tl-xl"></div>
-            <div className="absolute bottom-0 right-0 w-16 h-16 border-b-4 border-r-4 border-yellow-500/30 rounded-br-xl"></div>
+            <div className="absolute top-0 left-0 h-24 w-24 border-t-4 border-l-4 border-yellow-500/30 rounded-tl-2xl"></div>
+            <div className="absolute bottom-0 right-0 h-24 w-24 border-b-4 border-r-4 border-yellow-500/30 rounded-br-2xl"></div>
           </div>
         </div>
       )}

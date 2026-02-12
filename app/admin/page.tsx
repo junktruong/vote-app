@@ -2,6 +2,53 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+type PollItem = {
+  id: string;
+  title: string;
+  isActive: boolean;
+  status: "OPEN" | "CLOSED";
+  revealState: string;
+  countdownStartedAt?: string | null;
+  countdownDurationSec?: number;
+  spinState?: string;
+  spinWinnerId?: string | null;
+  spinWinnerName?: string | null;
+  spinRevealedAt?: string | null;
+  spinConfigSpecial?: number | null;
+  spinConfigFirst?: number | null;
+  spinConfigSecond?: number[];
+  spinLatestNumber?: number | null;
+  spinLatestPrize?: string | null;
+  spinThirdIndex?: number;
+  spinEncourageCount?: number;
+  spinFirstDrawnCount?: number;
+  spinSecondDrawnCount?: number;
+  spinThirdLimit?: number;
+  spinEncourageLimit?: number;
+  receiptSpinState?: string;
+  receiptSpinNumber?: number | null;
+  viewMode?: "RESULTS" | "RECEIPT_SPIN" | "SPIN";
+  revealWinner?: boolean;
+  showOnResults?: boolean;
+  maxVotes: number;
+  candidateCount: number;
+  votingEndsAt?: string | null;
+  createdAt: string;
+};
+
+type VoterRow = {
+  userId: string;
+  fullName: string;
+  count: number;
+  candidateNames?: string[];
+};
+
+type CandidateStat = {
+  candidateId: string;
+  fullName: string;
+  voteCount: number;
+};
+
 export default function Admin() {
   const r = useRouter();
   const [pw, setPw] = useState("");
@@ -10,13 +57,17 @@ export default function Admin() {
   const [maxVotes, setMaxVotes] = useState(3);
   const [candidateInput, setCandidateInput] = useState("");
   const [msg, setMsg] = useState("");
-  const [polls, setPolls] = useState<any[]>([]);
-  const [voters, setVoters] = useState<any[]>([]);
+  const [polls, setPolls] = useState<PollItem[]>([]);
+  const [voters, setVoters] = useState<VoterRow[]>([]);
+  const [candidateStats, setCandidateStats] = useState<CandidateStat[]>([]);
+  const [candidateTotalVotes, setCandidateTotalVotes] = useState(0);
   const [votesPollTitle, setVotesPollTitle] = useState("");
   const [spinSpecial, setSpinSpecial] = useState("");
   const [spinFirst, setSpinFirst] = useState("");
   const [spinSecond, setSpinSecond] = useState("");
-  const [spinThird, setSpinThird] = useState("");
+  const [showSpinConfigByPoll, setShowSpinConfigByPoll] = useState<Record<string, boolean>>({});
+  const [showExtraSpinByPoll, setShowExtraSpinByPoll] = useState<Record<string, boolean>>({});
+  const [showCreatePollArea, setShowCreatePollArea] = useState(true);
 
   function formatReceiptNumber(value: unknown) {
     const n = typeof value === "number" ? value : Number.NaN;
@@ -59,7 +110,6 @@ export default function Admin() {
       setSpinSpecial(latest.spinConfigSpecial ? String(latest.spinConfigSpecial) : "");
       setSpinFirst(latest.spinConfigFirst ? String(latest.spinConfigFirst) : "");
       setSpinSecond(Array.isArray(latest.spinConfigSecond) ? latest.spinConfigSecond.join(", ") : "");
-      setSpinThird(Array.isArray(latest.spinConfigThird) ? latest.spinConfigThird.join(", ") : "");
     }
   }
 
@@ -68,6 +118,8 @@ export default function Admin() {
     const d = await res.json();
     if (!res.ok) return setMsg(d.error || "Lỗi");
     setVoters(d.voters || []);
+    setCandidateStats(d.candidateStats || []);
+    setCandidateTotalVotes(Number(d.totalVotes) || 0);
     setVotesPollTitle(d.poll?.title || "");
   }
 
@@ -99,7 +151,7 @@ export default function Admin() {
     if (res.ok) await loadPolls();
   }
 
-  async function updatePoll(pollId: string, payload: any) {
+  async function updatePoll(pollId: string, payload: Record<string, unknown>) {
     const res = await fetch(`/api/admin/polls/${pollId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -175,17 +227,6 @@ export default function Admin() {
     if (res.ok) await loadPolls();
   }
 
-  async function spinNow(pollId: string) {
-    const res = await fetch("/api/admin/spin", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pollId, prize: "encourage" }),
-    });
-    const d = await res.json();
-    setMsg(res.ok ? `Đã quay số: ${d.spinWinnerName || ""}` : (d.error || "Lỗi"));
-    if (res.ok) await loadPolls();
-  }
-
   async function spinPrize(pollId: string, prize: string) {
     const res = await fetch("/api/admin/spin", {
       method: "POST",
@@ -195,6 +236,22 @@ export default function Admin() {
     const d = await res.json();
     setMsg(res.ok ? `Đã quay ${d.spinLatestPrize || ""}: ${d.spinLatestNumber || ""}` : (d.error || "Lỗi"));
     if (res.ok) await loadPolls();
+  }
+
+  async function addExtraSpin(pollId: string, prize: "third" | "encourage") {
+    const res = await fetch("/api/admin/spin-extra", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pollId, prize }),
+    });
+    const d = await res.json();
+    if (!res.ok) return setMsg(d.error || "Lỗi");
+    setMsg(
+      prize === "third"
+        ? `Đã cộng thêm 1 lượt quay cho giải ba (tổng: ${d.spinThirdLimit || "-"})`
+        : `Đã cộng thêm 1 lượt quay cho khuyến khích (tổng: ${d.spinEncourageLimit || "-"})`
+    );
+    await loadPolls();
   }
 
   async function spinReceipt(pollId: string) {
@@ -218,7 +275,6 @@ export default function Admin() {
         special: spinSpecial,
         first: spinFirst,
         second: spinSecond,
-        third: spinThird,
       }),
     });
     const d = await res.json();
@@ -275,6 +331,11 @@ export default function Admin() {
     );
     }
 
+  const maxCandidateVotes = candidateStats.reduce((max, candidate) => {
+    const voteCount = Number(candidate?.voteCount) || 0;
+    return voteCount > max ? voteCount : max;
+  }, 0);
+
   return (
     <main className="min-h-screen bg-[#FFFAF0] text-slate-900">
       <div className="relative overflow-hidden">
@@ -305,71 +366,103 @@ export default function Admin() {
             </div>
           </header>
 
-          <section className="rounded-3xl border border-red-100 bg-white/95 p-6 shadow-md">
-            <h3 className="text-lg font-semibold text-slate-900">Tạo cuộc bình chọn</h3>
-            <p className="mt-2 text-sm text-slate-600">Sau khi tạo, vào trang kết quả bấm Bắt đầu để đếm 3 phút.</p>
-            <input
-              placeholder="Tiêu đề"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="mt-4 w-full rounded-xl border border-red-100 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm focus:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-200"
-            />
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <label className="text-sm text-slate-600">
-                Số lượt vote mỗi người
-                <input
-                  type="number"
-                  min={1}
-                  value={maxVotes}
-                  onChange={(e) => setMaxVotes(Number(e.target.value))}
-                  className="mt-2 w-full rounded-xl border border-red-100 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm focus:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-200"
-                />
-              </label>
-            </div>
-            <p className="mt-4 text-sm text-slate-600">Danh sách ứng viên (mỗi dòng 1 tên hoặc phân tách bằng dấu phẩy):</p>
-            <textarea
-              value={candidateInput}
-              onChange={(e) => setCandidateInput(e.target.value)}
-              rows={5}
-              placeholder="Ví dụ: Nguyễn Văn A, Trần Thị B..."
-              className="mt-3 w-full rounded-2xl border border-red-100 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm focus:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-200"
-            />
-            <div className="mt-3 flex flex-wrap gap-2 text-xs">
-              {candidateNames.map((name) => (
-                <span key={name} className="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-600">
-                  {name}
-                </span>
-              ))}
+          <section className="rounded-3xl border border-red-100 bg-white/95 p-4 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-slate-700">Khu vực tạo bình chọn</p>
+              <button
+                onClick={() => setShowCreatePollArea((prev) => !prev)}
+                className="rounded-full border border-red-200 bg-white px-4 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-50"
+              >
+                Ẩn/Hiện khu vực tạo bình chọn {showCreatePollArea ? "(đang hiện)" : "(đang ẩn)"}
+              </button>
             </div>
           </section>
 
-          <section className="flex flex-wrap gap-3">
-            <button
-              onClick={createPoll}
-              disabled={!title.trim() || candidateNames.length < 2}
-              className="rounded-full bg-[#D32F2F] px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-[#B71C1C] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none"
-            >
-              Tạo &amp; Bắt đầu
-            </button>
-            <button
-              onClick={stopPoll}
-              className="rounded-full border border-red-200 bg-white px-6 py-3 text-sm font-semibold text-red-700 shadow-sm transition hover:bg-red-50"
-            >
-              Dừng
-            </button>
-            <button
-              onClick={reveal}
-              className="rounded-full bg-[#FBC02D] px-6 py-3 text-sm font-semibold text-slate-900 shadow-lg transition hover:bg-[#F9A825]"
-            >
-              Công bố (HIỆN)
-            </button>
-          </section>
+          {showCreatePollArea ? (
+            <>
+              <section className="rounded-3xl border border-red-100 bg-white/95 p-6 shadow-md">
+                <h3 className="text-lg font-semibold text-slate-900">Tạo cuộc bình chọn</h3>
+                <p className="mt-2 text-sm text-slate-600">Sau khi tạo, vào trang kết quả bấm Bắt đầu để đếm 3 phút.</p>
+                <input
+                  placeholder="Tiêu đề"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="mt-4 w-full rounded-xl border border-red-100 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm focus:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-200"
+                />
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <label className="text-sm text-slate-600">
+                    Số lượt vote mỗi người
+                    <input
+                      type="number"
+                      min={1}
+                      value={maxVotes}
+                      onChange={(e) => setMaxVotes(Number(e.target.value))}
+                      className="mt-2 w-full rounded-xl border border-red-100 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm focus:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-200"
+                    />
+                  </label>
+                </div>
+                <p className="mt-4 text-sm text-slate-600">Danh sách ứng viên (mỗi dòng 1 tên hoặc phân tách bằng dấu phẩy):</p>
+                <textarea
+                  value={candidateInput}
+                  onChange={(e) => setCandidateInput(e.target.value)}
+                  rows={5}
+                  placeholder="Ví dụ: Nguyễn Văn A, Trần Thị B..."
+                  className="mt-3 w-full rounded-2xl border border-red-100 bg-white px-4 py-3 text-sm text-slate-800 shadow-sm focus:border-red-300 focus:outline-none focus:ring-2 focus:ring-red-200"
+                />
+                <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                  {candidateNames.map((name) => (
+                    <span key={name} className="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-600">
+                      {name}
+                    </span>
+                  ))}
+                </div>
+              </section>
+
+              <section className="flex flex-wrap gap-3">
+                <button
+                  onClick={createPoll}
+                  disabled={!title.trim() || candidateNames.length < 2}
+                  className="rounded-full bg-[#D32F2F] px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-[#B71C1C] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none"
+                >
+                  Tạo &amp; Bắt đầu
+                </button>
+                <button
+                  onClick={stopPoll}
+                  className="rounded-full border border-red-200 bg-white px-6 py-3 text-sm font-semibold text-red-700 shadow-sm transition hover:bg-red-50"
+                >
+                  Dừng
+                </button>
+              </section>
+            </>
+          ) : null}
 
           <section className="rounded-3xl border border-red-100 bg-white/95 p-6 shadow-md">
             <h3 className="text-lg font-semibold text-slate-900">Danh sách poll</h3>
             <div className="mt-4 flex flex-col gap-4">
-              {polls.map((poll) => (
-                <div key={poll.id} className="rounded-2xl border border-red-100 bg-white p-4 shadow-sm">
+              {polls.map((poll, index) => {
+                const pollKey = String(poll?.id ?? index);
+                const isSpinConfigVisible = Boolean(showSpinConfigByPoll[pollKey]);
+                const secondDrawnCount = Number.isFinite(Number(poll?.spinSecondDrawnCount))
+                  ? Number(poll.spinSecondDrawnCount)
+                  : 0;
+                const firstDrawnCount = Number.isFinite(Number(poll?.spinFirstDrawnCount))
+                  ? Number(poll.spinFirstDrawnCount)
+                  : 0;
+                const thirdDrawnCount = Number.isFinite(Number(poll?.spinThirdIndex))
+                  ? Number(poll.spinThirdIndex)
+                  : 0;
+                const encourageDrawnCount = Number.isFinite(Number(poll?.spinEncourageCount))
+                  ? Number(poll.spinEncourageCount)
+                  : 0;
+                const thirdLimit = Number.isFinite(Number(poll?.spinThirdLimit))
+                  ? Number(poll.spinThirdLimit)
+                  : 3;
+                const encourageLimit = Number.isFinite(Number(poll?.spinEncourageLimit))
+                  ? Number(poll.spinEncourageLimit)
+                  : 5;
+                const showExtraActions = Boolean(showExtraSpinByPoll[pollKey]);
+                return (
+                <div key={pollKey} className="rounded-2xl border border-red-100 bg-white p-4 shadow-sm">
                   <div className="flex flex-col gap-3 md:flex-row md:items-center">
                     <div className="flex-1">
                       <div className="w-full rounded-xl border border-red-100 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm">
@@ -413,163 +506,253 @@ export default function Admin() {
                       Chứng từ: {formatReceiptNumber(poll.receiptSpinNumber) || "Chưa quay"}
                     </span>
                   </div>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <button
-                      onClick={() => setViewMode(poll.id, "RESULTS")}
-                      className={`rounded-full border px-4 py-2 text-xs font-semibold transition ${
-                        poll.viewMode === "RESULTS"
-                          ? "border-slate-300 bg-slate-100 text-slate-700"
-                          : "border-slate-200 text-slate-700 hover:bg-slate-50"
-                      }`}
-                    >
-                      Về kết quả
-                    </button>
-                    <button
-                      onClick={() => setViewMode(poll.id, "RECEIPT_SPIN")}
-                      className={`rounded-full border px-4 py-2 text-xs font-semibold transition ${
-                        poll.viewMode === "RECEIPT_SPIN"
-                          ? "border-indigo-300 bg-indigo-100 text-indigo-700"
-                          : "border-indigo-200 text-indigo-700 hover:bg-indigo-50"
-                      }`}
-                    >
-                      Sang quay chứng từ
-                    </button>
-                    <button
-                      onClick={() => setViewMode(poll.id, "SPIN")}
-                      className={`rounded-full border px-4 py-2 text-xs font-semibold transition ${
-                        poll.viewMode === "SPIN"
-                          ? "border-purple-300 bg-purple-100 text-purple-700"
-                          : "border-purple-200 text-purple-700 hover:bg-purple-50"
-                      }`}
-                    >
-                      Sang quay may mắn
-                    </button>
-                    <button
-                      onClick={() => startRevealCountdown(poll.id)}
-                      disabled={poll.revealState !== "NOT_STARTED"}
-                      className="rounded-full border border-yellow-200 px-4 py-2 text-xs font-semibold text-yellow-700 transition hover:bg-yellow-50 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      Bắt đầu đếm giờ
-                    </button>
-                    <button
-                      onClick={() => spinReceipt(poll.id)}
-                      disabled={poll.receiptSpinState === "REVEALED"}
-                      className="rounded-full border border-indigo-200 px-4 py-2 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      Quay chứng từ (1 lần)
-                    </button>
-                    <button
-                      onClick={() => spinPrize(poll.id, "encourage")}
-                      className="rounded-full border border-purple-200 px-4 py-2 text-xs font-semibold text-purple-700 transition hover:bg-purple-50"
-                    >
-                      Quay khuyến khích
-                    </button>
-                    <button
-                      onClick={() => spinPrize(poll.id, "third")}
-                      className="rounded-full border border-orange-200 px-4 py-2 text-xs font-semibold text-orange-700 transition hover:bg-orange-50"
-                    >
-                      Quay giải ba
-                    </button>
-                    <button
-                      onClick={() => spinPrize(poll.id, "second")}
-                      className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
-                    >
-                      Quay giải nhì
-                    </button>
-                    <button
-                      onClick={() => spinPrize(poll.id, "first")}
-                      className="rounded-full border border-yellow-200 px-4 py-2 text-xs font-semibold text-yellow-700 transition hover:bg-yellow-50"
-                    >
-                      Quay giải nhất
-                    </button>
-                    <button
-                      onClick={() => spinPrize(poll.id, "special")}
-                      className="rounded-full border border-red-200 px-4 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-50"
-                    >
-                      Quay đặc biệt
-                    </button>
-                    <button
-                      onClick={() => openVote(poll.id)}
-                      className="rounded-full border border-emerald-200 px-4 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50"
-                    >
-                      Mở vote
-                    </button>
-                    <button
-                      onClick={() => updatePoll(poll.id, { status: "CLOSED" })}
-                      className="rounded-full border border-red-200 px-4 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-50"
-                    >
-                      Đóng vote
-                    </button>
-                    <button
-                      onClick={() => resetVotes(poll.id)}
-                      className="rounded-full border border-orange-200 px-4 py-2 text-xs font-semibold text-orange-700 transition hover:bg-orange-50"
-                    >
-                      Reset phiếu
-                    </button>
-                    <button
-                      onClick={() => resetPoll(poll.id)}
-                      className="rounded-full border border-red-200 px-4 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-50"
-                    >
-                      Reset poll
-                    </button>
-                    <button
-                      onClick={() => deletePoll(poll.id)}
-                      className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
-                    >
-                      Xoá poll
-                    </button>
-                  </div>
-                  <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-4">
-                    <p className="text-sm font-semibold text-slate-700">Cấu hình quay số (đặc biệt/nhất/nhì/ba)</p>
-                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                      <label className="text-xs text-slate-600">
-                        Đặc biệt (1 số)
-                        <input
-                          value={spinSpecial}
-                          onChange={(e) => setSpinSpecial(e.target.value)}
-                          placeholder="VD: 88"
-                          className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm focus:outline-none"
-                        />
-                      </label>
-                      <label className="text-xs text-slate-600">
-                        Giải nhất (1 số)
-                        <input
-                          value={spinFirst}
-                          onChange={(e) => setSpinFirst(e.target.value)}
-                          placeholder="VD: 12"
-                          className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm focus:outline-none"
-                        />
-                      </label>
-                      <label className="text-xs text-slate-600">
-                        Giải nhì (2 số)
-                        <input
-                          value={spinSecond}
-                          onChange={(e) => setSpinSecond(e.target.value)}
-                          placeholder="VD: 03, 15"
-                          className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm focus:outline-none"
-                        />
-                      </label>
-                      <label className="text-xs text-slate-600">
-                        Giải ba (3 số)
-                        <input
-                          value={spinThird}
-                          onChange={(e) => setSpinThird(e.target.value)}
-                          placeholder="VD: 05, 22, 30"
-                          className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm focus:outline-none"
-                        />
-                      </label>
+                  <div className="mt-4 grid gap-3 lg:grid-cols-3">
+                    <div className="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-3">
+                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">Bình chọn</p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <button
+                          onClick={() => startRevealCountdown(poll.id)}
+                          disabled={poll.revealState !== "NOT_STARTED"}
+                          className="rounded-full border-2 border-yellow-300 bg-yellow-50 px-6 py-3 text-sm font-bold text-yellow-800 shadow-sm transition hover:bg-yellow-100 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          Bắt đầu đếm giờ
+                        </button>
+                        <button
+                          onClick={reveal}
+                          className="rounded-full border-2 border-amber-300 bg-amber-50 px-6 py-3 text-sm font-bold text-amber-800 shadow-sm transition hover:bg-amber-100"
+                        >
+                          Công bố (HIỆN)
+                        </button>
+                        <button
+                          onClick={() => setViewMode(poll.id, "RESULTS")}
+                          className={`rounded-full border px-4 py-2 text-xs font-semibold transition ${
+                            poll.viewMode === "RESULTS"
+                              ? "border-slate-300 bg-slate-100 text-slate-700"
+                              : "border-slate-200 text-slate-700 hover:bg-slate-50"
+                          }`}
+                        >
+                          Về kết quả
+                        </button>
+                        <button
+                          onClick={() => openVote(poll.id)}
+                          className="rounded-full border border-emerald-200 px-4 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50"
+                        >
+                          Mở vote
+                        </button>
+                        <button
+                          onClick={() => updatePoll(poll.id, { status: "CLOSED" })}
+                          className="rounded-full border border-red-200 px-4 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-50"
+                        >
+                          Đóng vote
+                        </button>
+                        <button
+                          onClick={() => resetVotes(poll.id)}
+                          className="rounded-full border border-orange-200 px-4 py-2 text-xs font-semibold text-orange-700 transition hover:bg-orange-50"
+                        >
+                          Reset phiếu
+                        </button>
+                        <button
+                          onClick={() => resetPoll(poll.id)}
+                          className="rounded-full border border-red-200 px-4 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-50"
+                        >
+                          Reset poll
+                        </button>
+                        <button
+                          onClick={() => deletePoll(poll.id)}
+                          className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
+                        >
+                          Xoá poll
+                        </button>
+                      </div>
                     </div>
-                    <div className="mt-3">
-                      <button
-                        onClick={() => saveSpinConfig(poll.id)}
-                        className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-white"
-                      >
-                        Lưu cấu hình quay số
-                      </button>
+
+                    <div className="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-3">
+                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-700">Giải chứng từ</p>
+                      <div className="mt-3 flex flex-wrap gap-3">
+                        <button
+                          onClick={() => setViewMode(poll.id, "RECEIPT_SPIN")}
+                          className={`rounded-full border-2 px-6 py-3 text-sm font-bold transition ${
+                            poll.viewMode === "RECEIPT_SPIN"
+                              ? "border-indigo-300 bg-indigo-100 text-indigo-700"
+                              : "border-indigo-200 bg-white text-indigo-700 hover:bg-indigo-50"
+                          }`}
+                        >
+                          Sang quay chứng từ
+                        </button>
+                        <button
+                          onClick={() => spinReceipt(poll.id)}
+                          disabled={poll.receiptSpinState === "REVEALED"}
+                          className="rounded-full border-2 border-indigo-200 bg-white px-6 py-3 text-sm font-bold text-indigo-700 transition hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          Quay chứng từ (1 lần)
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-yellow-100 bg-yellow-50/40 p-3">
+                      <p className="text-xs font-bold uppercase tracking-[0.18em] text-yellow-800">Quay may mắn</p>
+                      <div className="mt-3 space-y-3">
+                        <div className="rounded-xl border border-purple-100 bg-white/70 p-3">
+                          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-purple-700">Điều hướng</p>
+                          <div className="mt-2 flex flex-wrap items-center gap-3">
+                            <button
+                              onClick={() => setViewMode(poll.id, "SPIN")}
+                              className={`rounded-full border-2 px-6 py-3 text-sm font-bold transition ${
+                                poll.viewMode === "SPIN"
+                                  ? "border-purple-300 bg-purple-100 text-purple-700"
+                                  : "border-purple-200 bg-white text-purple-700 hover:bg-purple-50"
+                              }`}
+                            >
+                              Sang quay may mắn
+                            </button>
+                            <span className="rounded-full border border-slate-300 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-700">
+                              Giải nhì: {secondDrawnCount}/2
+                            </span>
+                            <span className="rounded-full border border-yellow-300 bg-yellow-50 px-3 py-1 text-xs font-semibold text-yellow-700">
+                              Giải nhất: {firstDrawnCount}/1
+                            </span>
+                            <span className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-700">
+                              Giải ba: {thirdDrawnCount}/{thirdLimit}
+                            </span>
+                            <span className="rounded-full border border-purple-200 bg-purple-50 px-3 py-1 text-xs font-semibold text-purple-700">
+                              Khuyến khích: {encourageDrawnCount}/{encourageLimit}
+                            </span>
+                          </div>
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <button
+                              onClick={() =>
+                                setShowExtraSpinByPoll((prev) => ({
+                                  ...prev,
+                                  [pollKey]: !prev[pollKey],
+                                }))
+                              }
+                              className="rounded-full border border-slate-300 bg-white px-4 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-50"
+                            >
+                              Quay thêm {showExtraActions ? "▲" : "▼"}
+                            </button>
+                          </div>
+                          {showExtraActions ? (
+                            <div className="mt-3 flex flex-wrap gap-3">
+                              <button
+                                onClick={() => addExtraSpin(poll.id, "third")}
+                                className="rounded-full border-2 border-orange-300 bg-orange-50 px-5 py-2 text-sm font-bold text-orange-800 transition hover:bg-orange-100"
+                              >
+                                +1 lượt giải ba
+                              </button>
+                              <button
+                                onClick={() => addExtraSpin(poll.id, "encourage")}
+                                className="rounded-full border-2 border-purple-300 bg-purple-50 px-5 py-2 text-sm font-bold text-purple-800 transition hover:bg-purple-100"
+                              >
+                                +1 lượt khuyến khích
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
+
+                        <div className="rounded-xl border border-orange-100 bg-white/70 p-3">
+                          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-orange-700">Quay ngẫu nhiên</p>
+                          <div className="mt-2 flex flex-wrap gap-3">
+                            <button
+                              onClick={() => spinPrize(poll.id, "encourage")}
+                              className="rounded-full border-2 border-purple-200 bg-white px-6 py-3 text-sm font-bold text-purple-700 transition hover:bg-purple-50"
+                            >
+                              Quay khuyến khích
+                            </button>
+                            <button
+                              onClick={() => spinPrize(poll.id, "third")}
+                              className="rounded-full border-2 border-orange-200 bg-white px-6 py-3 text-sm font-bold text-orange-700 transition hover:bg-orange-50"
+                            >
+                              Quay giải ba
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="rounded-xl border border-red-100 bg-white/70 p-3">
+                          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-red-700">Giải chính</p>
+                          <div className="mt-2 flex flex-wrap gap-3">
+                            <button
+                              onClick={() => spinPrize(poll.id, "second")}
+                              className="rounded-full border-2 border-slate-200 bg-white px-6 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+                            >
+                              Quay giải nhì
+                            </button>
+                            <button
+                              onClick={() => spinPrize(poll.id, "first")}
+                              className="rounded-full border-2 border-yellow-200 bg-white px-6 py-3 text-sm font-bold text-yellow-700 transition hover:bg-yellow-50"
+                            >
+                              Quay giải nhất
+                            </button>
+                            <button
+                              onClick={() => spinPrize(poll.id, "special")}
+                              className="rounded-full border-2 border-red-200 bg-white px-6 py-3 text-sm font-bold text-red-700 transition hover:bg-red-50"
+                            >
+                              Quay đặc biệt
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="pt-1">
+                          <button
+                            onClick={() =>
+                              setShowSpinConfigByPoll((prev) => ({
+                                ...prev,
+                                [pollKey]: !prev[pollKey],
+                              }))
+                            }
+                            className="rounded-full border-2 border-slate-200 bg-white px-6 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+                          >
+                            Ẩn/Hiện cấu hình quay số {isSpinConfigVisible ? "(đang hiện)" : "(đang ẩn)"}
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
+                  {isSpinConfigVisible ? (
+                    <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                      <p className="text-sm font-semibold text-slate-700">Cấu hình quay số (đặc biệt/nhất/nhì)</p>
+                      <p className="mt-1 text-xs text-slate-500">Giải ba và khuyến khích sẽ quay random, tự loại trừ số đã cấu hình ở các giải trên.</p>
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                        <label className="text-xs text-slate-600">
+                          Đặc biệt (1 số)
+                          <input
+                            value={spinSpecial}
+                            onChange={(e) => setSpinSpecial(e.target.value)}
+                            placeholder="VD: 80"
+                            className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm focus:outline-none"
+                          />
+                        </label>
+                        <label className="text-xs text-slate-600">
+                          Giải nhất (1 số)
+                          <input
+                            value={spinFirst}
+                            onChange={(e) => setSpinFirst(e.target.value)}
+                            placeholder="VD: 12"
+                            className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm focus:outline-none"
+                          />
+                        </label>
+                        <label className="text-xs text-slate-600 sm:col-span-2">
+                          Giải nhì (2 số)
+                          <input
+                            value={spinSecond}
+                            onChange={(e) => setSpinSecond(e.target.value)}
+                            placeholder="VD: 03, 15"
+                            className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm focus:outline-none"
+                          />
+                        </label>
+                      </div>
+                      <div className="mt-3">
+                        <button
+                          onClick={() => saveSpinConfig(poll.id)}
+                          className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 transition hover:bg-white"
+                        >
+                          Lưu cấu hình quay số
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
-              ))}
+                );
+              })}
               {!polls.length ? (
                 <p className="text-sm text-slate-500">Chưa có poll nào.</p>
               ) : null}
@@ -589,6 +772,43 @@ export default function Admin() {
             <p className="mt-2 text-sm text-slate-600">
               {votesPollTitle ? `Theo poll: ${votesPollTitle}` : "Chưa có poll để thống kê."}
             </p>
+            <div className="mt-4 rounded-2xl border border-red-100 bg-red-50/40 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-bold uppercase tracking-[0.12em] text-red-700">Biểu đồ phiếu theo ứng viên</p>
+                <span className="rounded-full border border-red-200 bg-white px-3 py-1 text-xs font-semibold text-red-700">
+                  Tổng phiếu: {candidateTotalVotes}
+                </span>
+              </div>
+              <div className="mt-3 flex flex-col gap-3">
+                {candidateStats.map((candidate, index) => {
+                  const voteCount = Number(candidate?.voteCount) || 0;
+                  const percent = candidateTotalVotes > 0 ? (voteCount / candidateTotalVotes) * 100 : 0;
+                  const widthPercent = maxCandidateVotes > 0 ? (voteCount / maxCandidateVotes) * 100 : 0;
+                  const minVisibleWidth = voteCount > 0 ? 6 : 0;
+                  return (
+                    <div key={candidate?.candidateId || index} className="rounded-xl border border-red-100 bg-white p-3 shadow-sm">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-sm font-semibold text-slate-900">
+                          {index + 1}. {candidate?.fullName || "Không rõ tên"}
+                        </p>
+                        <p className="text-xs font-semibold text-slate-600">
+                          {voteCount} phiếu ({percent.toFixed(1)}%)
+                        </p>
+                      </div>
+                      <div className="mt-2 h-4 overflow-hidden rounded-full bg-slate-100">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-red-500 via-red-400 to-yellow-400 transition-all duration-500"
+                          style={{ width: `${Math.max(widthPercent, minVisibleWidth)}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+                {!candidateStats.length ? (
+                  <p className="text-sm text-slate-500">Chưa có dữ liệu ứng viên để hiển thị biểu đồ.</p>
+                ) : null}
+              </div>
+            </div>
             <div className="mt-4 flex flex-col gap-3">
               {voters.map((voter) => (
                 <div key={voter.userId} className="rounded-2xl border border-red-100 bg-white px-4 py-3 shadow-sm">

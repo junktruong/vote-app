@@ -1,0 +1,58 @@
+Original prompt: Kiểm tra lại vòng quay may mắn nhé tôi muốn các số lộn xộn không sắp xếp theo thứ tự
+
+2026-02-12:
+- Loaded develop-web-game skill instructions.
+- Started investigating spin wheel number ordering in `/app/spin/page.tsx`.
+- Updated `/app/spin/page.tsx` to shuffle wheel labels once per page load and map spin stop angle by shuffled index.
+- Ran `npm run lint` (repo has many pre-existing lint errors unrelated to this change).
+- Started local dev server and ran web-game Playwright client against `http://127.0.0.1:3000/spin`.
+- Reviewed screenshot at `output/web-game/shot-0.png`; wheel labels are visually shuffled (non-sequential).
+- Updated `/app/api/admin/spin/route.ts`: `giải ba` now draws random like `khuyến khích`, with 3-draw cap, and both random prizes exclude configured numbers of `đặc biệt/nhất/nhì`.
+- Updated `/app/api/admin/spin-config/route.ts`: removed `giải ba` manipulation input; only validates/saves `đặc biệt/nhất/nhì`, and rejects duplicate configured numbers.
+- Updated `/app/admin/page.tsx`: added toggle button to show/hide spin config box; config UI now only includes `đặc biệt/nhất/nhì` and explains random behavior for `giải ba/khuyến khích`.
+- Ran targeted lint on changed files (`npx eslint ...`); failures are pre-existing `any` types and an unused function in admin page.
+- Attempted to rerun Playwright UI regression, but local dev server launch escalation was not approved in this turn, so verification stayed at code/lint level.
+- Updated toggle label/behavior in `/app/admin/page.tsx` to always show `Ẩn/Hiện` wording and explicit status `(đang ẩn|đang hiện)` per poll; also keyed toggle state with stable `pollKey`.
+- Updated `/app/results/page.tsx`: show poll title under heading, remove "Mở trang quay số" button, and enlarge timer display with responsive `clamp(...)` sizing (max ~3x previous size).
+- Adjusted results header layout to prevent clipping (`justify-start`, vertical scroll, top padding) and increased poll title size further for stronger prominence.
+- Updated winner reveal popup in `/app/results/page.tsx`: winner percent is now fixed at `36%`, and reveal popup dimensions/typography were scaled up significantly.
+- Restyled winner reveal popup with Tet theme (red/gold gradient, festive ornaments, decorative patterns, and "Mừng Xuân" badge) while keeping reveal behavior unchanged.
+- Reorganized admin poll action buttons into 3 visual zones (`Bình chọn`, `Giải chứng từ`, `Quay may mắn`) to reduce misclick risk without changing action logic.
+- Added a dedicated toggle for the poll creation area in `/app/admin/page.tsx`, allowing show/hide of the entire "Tạo cuộc bình chọn" form and its action buttons.
+- Increased the "Bắt đầu đếm giờ" button size for easier tapping and moved "Công bố (HIỆN)" next to it within the `Bình chọn` action zone.
+- Refined the `Quay may mắn` button area to reduce misclicks: separated prize actions into sub-groups and enlarged all lucky-spin action buttons.
+- Enlarged `Giải chứng từ` buttons and added a lucky-spin counter badge (`Đã quay X/Y giải`) next to the `Sang quay may mắn` button, backed by new count fields from `/api/admin/polls`.
+- Added "Quay thêm" flow for lucky spin reroll capacity: new `/api/admin/spin-extra` API increments quota by +1 for either `giải ba` or `khuyến khích`, and `/api/admin/spin` now enforces dynamic per-prize limits (`spinThirdLimit`, `spinEncourageLimit`) instead of fixed 3/5.
+- Updated admin lucky-spin UI to toggle and show extra actions (`+1 lượt giải ba`, `+1 lượt khuyến khích`) and display per-prize progress (`đã quay / giới hạn`) for both random prize groups.
+- Replaced total lucky-spin counter with per-prize counters right beside the "Sang quay may mắn" button (`Giải nhì x/2`, `Giải nhất x/1`, `Giải ba x/N`, `Khuyến khích x/N`).
+- Added page music support via new `lib/use-page-music.ts`, wired into `/app/results/page.tsx`, `/app/spin/page.tsx`, and `/app/receipt-spin/page.tsx` for looped background track + reveal track.
+- Added `public/music/README.md` documenting expected filenames (`background.mp3`, `reveal.mp3`) for drop-in assets.
+- Increased lucky wheel zoom animation in `/app/spin/page.tsx` (`scale` max from ~1.6x to ~2.35x, `translateY` from 200 to 300) so wheel expands more during spin.
+- Enlarged lucky-number reveal popup in `/app/spin/page.tsx` to near 2x footprint (`max-w-sm` -> `max-w-[52rem]`, stronger overall scaling, larger number typography up to `16rem`, bigger prize/name text and decorations).
+- Minor type cleanup in `/app/spin/page.tsx`: `normalizeNumber(value: any)` -> `normalizeNumber(value: unknown)`.
+- Ran `npx eslint app/spin/page.tsx` after changes: pass.
+- Attempted Playwright verification with `develop-web-game` client, but browser launch required escalation and permission was rejected in this turn.
+- Tuned `/app/spin/page.tsx` per user feedback: end-of-spin wheel zoom increased by ~1.5x over prior level (max scale ~3.05), and reveal popup switched to near-square layout (`aspect-square`) instead of wide rectangle.
+- Rebalanced popup internals for square shape (spacing + responsive text sizing) to avoid overflow while keeping the lucky number prominent.
+- Ran `npx eslint app/spin/page.tsx`: pass.
+- Refined spin drop behavior in `/app/spin/page.tsx`: vertical move now reaches a capped point early (`moveProgress` up to 55% of zoom phase) and then stays fixed, with responsive `maxTranslateY` clamped by viewport height to prevent wheel dropping out of screen.
+- Ran `npx eslint app/spin/page.tsx`: pass.
+- Updated `/app/spin/page.tsx` per latest feedback: vertical drop is now hard-capped at `200px` and held (no further downward drift).
+- Slowed spin slightly for smoother feel by reducing random extra full spins (`5..7` instead of `5..8`) and increasing animation duration (`23000ms`).
+- Ran `npx eslint app/spin/page.tsx`: pass.
+- Added candidate vote chart support for admin: `/api/admin/votes` now returns `candidateStats` (per-candidate vote counts) and `totalVotes`, while keeping existing voter list payload.
+- Added a new "Biểu đồ phiếu theo ứng viên" block in `/app/admin/page.tsx` under "Phiếu đã ghi nhận", showing ranked candidate bars, vote counts, and percentages.
+- Refined admin page typing for new chart data (`PollItem`, `VoterRow`, `CandidateStat`) and changed `updatePoll` payload type to `Record<string, unknown>`.
+- Removed unused `spinNow` function from `/app/admin/page.tsx`.
+- Ran `npx eslint app/admin/page.tsx app/api/admin/votes/route.ts`: pass.
+- Remapped page music to new assets: `spin.mp3`, `countdown.mp3`, `winner.mp3`.
+- Updated `lib/use-page-music.ts` to support independent toggles (`backgroundEnabled`, `revealEnabled`) so countdown background can be on/off without disabling winner reveal sound.
+- Updated `/app/spin/page.tsx` and `/app/receipt-spin/page.tsx` to use `spin.mp3` for background and `winner.mp3` for reveal popup.
+- Updated `/app/results/page.tsx` to use `countdown.mp3` only while reveal state is `COUNTING`, and `winner.mp3` for winner reveal.
+- Updated `/public/music/README.md` to document the 3 new filenames.
+- Lint status: `lib/use-page-music.ts`, `app/spin/page.tsx`, `app/receipt-spin/page.tsx` pass; `app/results/page.tsx` still has pre-existing lint rules (`no-explicit-any`, `react-hooks/set-state-in-effect`) unrelated to this music remap.
+- Updated spin audio trigger logic so `spin.mp3` loops only during active spin animations (not idle):
+  - `/app/spin/page.tsx`: added `isSpinAudioActive` state, enabled background music only while wheel animation is running, and stop when spin completes/resets.
+  - `/app/receipt-spin/page.tsx`: added `isSpinAudioActive` state with the same behavior for receipt spin animation.
+- Countdown behavior remains looped while `COUNTING` in `/app/results/page.tsx` via `backgroundEnabled` condition.
+- Ran `npx eslint app/spin/page.tsx app/receipt-spin/page.tsx`: pass.

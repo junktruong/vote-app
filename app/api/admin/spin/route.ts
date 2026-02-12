@@ -32,29 +32,45 @@ export async function POST(req: Request) {
   const configSpecial = poll.spinConfigSpecial ?? null;
   const configFirst = poll.spinConfigFirst ?? null;
   const configSecond = Array.isArray(poll.spinConfigSecond) ? poll.spinConfigSecond : [];
-  const configThird = Array.isArray(poll.spinConfigThird) ? poll.spinConfigThird : [];
+  const encourageLimit = Number.isFinite(Number(poll.spinEncourageLimit))
+    ? Math.max(0, Number(poll.spinEncourageLimit))
+    : 5;
+  const thirdLimit = Number.isFinite(Number(poll.spinThirdLimit))
+    ? Math.max(0, Number(poll.spinThirdLimit))
+    : 3;
+  const reservedConfigured = new Set<number>(
+    [configSpecial, configFirst, ...configSecond].filter((value): value is number => {
+      return Number.isInteger(value) && value >= 1 && value <= TOTAL_NUMBERS;
+    })
+  );
+
+  const getAvailableRandomNumbers = () => {
+    const available: number[] = [];
+    for (let i = 1; i <= TOTAL_NUMBERS; i += 1) {
+      if (!drawn.has(i) && !reservedConfigured.has(i)) available.push(i);
+    }
+    return available;
+  };
 
   let number: number | null = null;
   let prizeLabel = "";
 
   if (prize === "encourage") {
-    if ((poll.spinEncourageCount || 0) >= 5) {
-      return NextResponse.json({ error: "Đã đủ 5 giải khuyến khích." }, { status: 400 });
+    if ((poll.spinEncourageCount || 0) >= encourageLimit) {
+      return NextResponse.json({ error: `Đã đủ ${encourageLimit} giải khuyến khích.` }, { status: 400 });
     }
-    const reserved = new Set<number>([configSpecial, configFirst, ...configSecond, ...configThird].filter(Boolean) as number[]);
-    const available = [];
-    for (let i = 1; i <= TOTAL_NUMBERS; i += 1) {
-      if (!drawn.has(i) && !reserved.has(i)) available.push(i);
-    }
+    const available = getAvailableRandomNumbers();
     if (available.length === 0) return NextResponse.json({ error: "Hết số khả dụng." }, { status: 400 });
     number = pickRandom(available);
     poll.spinEncourageCount = (poll.spinEncourageCount || 0) + 1;
     prizeLabel = "Khuyến khích";
   } else if (prize === "third") {
-    const idx = poll.spinThirdIndex || 0;
-    if (idx >= configThird.length) return NextResponse.json({ error: "Đã đủ giải ba." }, { status: 400 });
-    number = Number(configThird[idx]);
-    poll.spinThirdIndex = idx + 1;
+    const thirdCount = poll.spinThirdIndex || 0;
+    if (thirdCount >= thirdLimit) return NextResponse.json({ error: `Đã đủ ${thirdLimit} giải ba.` }, { status: 400 });
+    const available = getAvailableRandomNumbers();
+    if (available.length === 0) return NextResponse.json({ error: "Hết số khả dụng." }, { status: 400 });
+    number = pickRandom(available);
+    poll.spinThirdIndex = thirdCount + 1;
     prizeLabel = "Giải ba";
   } else if (prize === "second") {
     const idx = poll.spinSecondIndex || 0;
