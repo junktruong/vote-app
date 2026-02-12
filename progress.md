@@ -72,3 +72,6 @@ Original prompt: Kiểm tra lại vòng quay may mắn nhé tôi muốn các s�
   - `/app/page.tsx` (`set-state-in-effect`)
   - `/app/results/page.tsx` (`set-state-in-effect` + typed data state)
 - `npm run lint` now passes with 0 errors (remaining 2 warnings are `@next/next/no-img-element` in `/app/dashboard/avatar-panel.tsx`).
+- Fixed build type error in `/app/results/page.tsx` by narrowing poll fields outside interval callback (`countdownStartedAt`, `countdownDurationSec`) before use.
+- Fixed additional strict-null type issue in `/app/vote/page.tsx` (`data` possibly null in vote submit) by using a safe `candidates` fallback.
+- Verified with `npx tsc --noEmit`: pass.
