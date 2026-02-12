@@ -5,6 +5,23 @@ import Confetti from "react-confetti";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePageMusic } from "@/lib/use-page-music";
 
+type PollResult = {
+  title?: string;
+  revealState?: "NOT_STARTED" | "COUNTING" | "WAITING_REVEAL" | "REVEALED" | string;
+  viewMode?: "RESULTS" | "RECEIPT_SPIN" | "SPIN" | string;
+  countdownStartedAt?: string | null;
+  countdownDurationSec?: number;
+};
+
+type TopResult = {
+  fullName?: string;
+};
+
+type ResultsPayload = {
+  poll?: PollResult | null;
+  top?: TopResult | null;
+};
+
 // Hook nhỏ để lấy kích thước màn hình cho Confetti
 function useWindowSize() {
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -18,7 +35,7 @@ function useWindowSize() {
 }
 
 export default function Results() {
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<ResultsPayload | null>(null);
   const [remainingSec, setRemainingSec] = useState<number | null>(null);
   const [localRevealState, setLocalRevealState] = useState<string | null>(null);
   const [revealCountdown, setRevealCountdown] = useState<number | null>(null);
@@ -95,16 +112,20 @@ export default function Results() {
 
   useEffect(() => {
     if (effectiveRevealState !== "REVEALED") {
-      setRevealCountdown(null);
-      setShowCongrats(false);
+      const resetTimer = setTimeout(() => {
+        setRevealCountdown(null);
+        setShowCongrats(false);
+      }, 0);
       lastReveal.current = effectiveRevealState;
-      return;
+      return () => clearTimeout(resetTimer);
     }
 
     if (lastReveal.current !== "REVEALED") {
-      setShowCongrats(false);
-      setRevealCountdown(3);
       lastReveal.current = "REVEALED";
+      const kickoffTimer = setTimeout(() => {
+        setShowCongrats(false);
+        setRevealCountdown(3);
+      }, 0);
       let current = 3;
       const timer = setInterval(() => {
         current -= 1;
@@ -116,24 +137,36 @@ export default function Results() {
           setRevealCountdown(current);
         }
       }, 1000);
-      return () => clearInterval(timer);
+      return () => {
+        clearTimeout(kickoffTimer);
+        clearInterval(timer);
+      };
     }
 
-    setShowCongrats(true);
+    const congratsTimer = setTimeout(() => {
+      setShowCongrats(true);
+    }, 0);
     lastReveal.current = effectiveRevealState;
+    return () => clearTimeout(congratsTimer);
   }, [effectiveRevealState]);
 
   useEffect(() => {
-    if (!data?.poll?.countdownStartedAt || effectiveRevealState !== "COUNTING") {
-      setRemainingSec(null);
-      return;
+    const poll = data?.poll;
+    if (!poll?.countdownStartedAt || effectiveRevealState !== "COUNTING") {
+      const resetTimer = setTimeout(() => {
+        setRemainingSec(null);
+      }, 0);
+      return () => clearTimeout(resetTimer);
     }
+    const countdownStartedAt = poll.countdownStartedAt;
+    const countdownDurationSec = poll.countdownDurationSec;
     let interval: NodeJS.Timeout | null = null;
+    let kickoffTimer: NodeJS.Timeout | null = null;
     let synced = false;
     const tickRemaining = () => {
-      const start = new Date(data.poll.countdownStartedAt).getTime();
-      const duration = Number.isFinite(Number(data.poll.countdownDurationSec))
-        ? Number(data.poll.countdownDurationSec)
+      const start = new Date(countdownStartedAt).getTime();
+      const duration = Number.isFinite(Number(countdownDurationSec))
+        ? Number(countdownDurationSec)
         : 180;
       const elapsedSec = Math.floor((Date.now() - start) / 1000);
       const remain = Math.max(0, duration - elapsedSec);
@@ -147,9 +180,10 @@ export default function Results() {
         }
       }
     };
-    tickRemaining();
+    kickoffTimer = setTimeout(tickRemaining, 0);
     interval = setInterval(tickRemaining, 1000);
     return () => {
+      if (kickoffTimer) clearTimeout(kickoffTimer);
       if (interval) clearInterval(interval);
     };
   }, [data?.poll?.countdownStartedAt, data?.poll?.countdownDurationSec, effectiveRevealState]);

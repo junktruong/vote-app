@@ -3,6 +3,12 @@ import { dbConnect } from "@/lib/db";
 import User from "@/models/User";
 import { createAccessToken, setUserSession } from "@/lib/auth";
 
+type UploadResponse = {
+  ok?: boolean;
+  url?: string;
+  error?: string;
+};
+
 export async function POST(req: Request) {
   await dbConnect();
 
@@ -36,7 +42,7 @@ export async function POST(req: Request) {
         // headers: { "Authorization": "Bearer YOUR_SECRET" }, // nếu bạn bật auth ở PHP
       });
 
-      const uploadData = await uploadRes.json().catch(() => ({} as any));
+      const uploadData: UploadResponse = await uploadRes.json().catch(() => ({}));
 
       photo = uploadData?.url || "";
       thumb = photo; // nếu chưa tạo thumbnail riêng thì dùng tạm photo
@@ -47,7 +53,7 @@ export async function POST(req: Request) {
           { status: 400 }
         );
       }
-    } catch (error) {
+    } catch {
       return NextResponse.json({ error: "Không thể tải ảnh lên." }, { status: 400 });
     }
   }
@@ -61,8 +67,9 @@ export async function POST(req: Request) {
       ok: true,
       accessToken: createAccessToken(String(user._id)),
     });
-  } catch (e: any) {
-    console.log("error : ", e.message);
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : "unknown";
+    console.log("error : ", message);
     return NextResponse.json({ error: "Không thể tạo tài khoản. Vui lòng thử lại." }, { status: 400 });
   }
 }

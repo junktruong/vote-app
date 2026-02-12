@@ -19,7 +19,7 @@ export async function GET() {
 
   const polls = await Poll.find({}).sort({ createdAt: -1 }).lean();
   return NextResponse.json({
-    polls: polls.map((poll: any) => {
+    polls: polls.map((poll) => {
       const spinHistory = Array.isArray(poll.spinHistory) ? poll.spinHistory : [];
       const spinDrawnCount = Array.isArray(poll.spinDrawnNumbers)
         ? poll.spinDrawnNumbers.length

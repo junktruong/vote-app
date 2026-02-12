@@ -63,7 +63,7 @@ const PollSchema = new Schema(
 export type PollDoc = mongoose.InferSchemaType<typeof PollSchema> & { _id: mongoose.Types.ObjectId };
 
 if (process.env.NODE_ENV !== "production") {
-  delete (mongoose.models as any).Poll;
+  delete (mongoose.models as Record<string, unknown>).Poll;
 }
 
 export default models.Poll || model("Poll", PollSchema);

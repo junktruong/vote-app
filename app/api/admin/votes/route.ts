@@ -75,7 +75,9 @@ export async function GET() {
       fullName: candidate.name,
       voteCount: candidateCountMap.get(String(candidate.id)) || 0,
     }))
-    .sort((a, b) => b.voteCount - a.voteCount || a.fullName.localeCompare(b.fullName));
+    .sort((a: CandidateStat, b: CandidateStat) => {
+      return b.voteCount - a.voteCount || a.fullName.localeCompare(b.fullName);
+    });
   const totalVotes = candidateStats.reduce((sum, candidate) => sum + (candidate.voteCount || 0), 0);
 
   const voters = grouped.map((g) => {

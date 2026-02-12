@@ -3,6 +3,12 @@ import { dbConnect } from "@/lib/db";
 import User from "@/models/User";
 import { getUserIdFromSession } from "@/lib/auth";
 
+type UploadResponse = {
+  ok?: boolean;
+  url?: string;
+  error?: string;
+};
+
 export async function POST(req: Request) {
   await dbConnect();
   const userId = await getUserIdFromSession();
@@ -25,7 +31,7 @@ export async function POST(req: Request) {
       body: uploadForm,
     });
 
-    const uploadData = await uploadRes.json().catch(() => ({} as any));
+    const uploadData: UploadResponse = await uploadRes.json().catch(() => ({}));
     const photo = uploadData?.url || "";
     const thumb = photo;
     if (!uploadRes.ok || !uploadData?.ok || !photo) {
@@ -34,7 +40,7 @@ export async function POST(req: Request) {
 
     await User.findByIdAndUpdate(userId, { thumb, photo });
     return NextResponse.json({ ok: true, thumb, photo });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Không thể tải ảnh lên." }, { status: 400 });
   }
 }

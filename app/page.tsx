@@ -38,7 +38,10 @@ function HomeContent() {
   // --- STATE (GIỮ NGUYÊN) ---
   const [fullName, setFullName] = useState("");
   const [msg, setMsg] = useState("");
-  const [inAppBrowser, setInAppBrowser] = useState(false);
+  const [inAppBrowser] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return isInAppBrowser(navigator.userAgent || "");
+  });
 
   useEffect(() => {
     let active = true;
@@ -72,13 +75,9 @@ function HomeContent() {
   }, [r, searchParams]);
 
   useEffect(() => {
-    const ua = navigator.userAgent || "";
-    const detectedInAppBrowser = isInAppBrowser(ua);
-    setInAppBrowser(detectedInAppBrowser);
-    if (detectedInAppBrowser) {
-      openInDefaultBrowser(window.location.href, ua);
-    }
-  }, []);
+    if (!inAppBrowser) return;
+    openInDefaultBrowser(window.location.href, navigator.userAgent || "");
+  }, [inAppBrowser]);
 
   async function login() {
     if (!fullName.trim()) {
@@ -98,7 +97,7 @@ function HomeContent() {
         localStorage.setItem(accessTokenKey, data.accessToken);
       }
       r.push("/dashboard");
-    } catch (e) {
+    } catch {
       setMsg("Lỗi kết nối server");
     }
   }

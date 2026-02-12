@@ -2,9 +2,18 @@
 
 import { useEffect, useId, useState, useRef } from "react";
 
+type UserProfile = {
+  id?: string;
+  fullName?: string;
+  role?: string;
+  thumb?: string;
+  photo?: string;
+  photoUrl?: string;
+};
+
 export default function AvatarPanel() {
   const photoInputId = useId();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [preview, setPreview] = useState("");
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [msg, setMsg] = useState("");
@@ -57,11 +66,11 @@ export default function AvatarPanel() {
         return;
       }
       setPreview(data?.thumb || data?.photo || preview);
-      setUser((prev: any) => ({ ...prev, thumb: data?.thumb, photo: data?.photo }));
+      setUser((prev) => ({ ...(prev || {}), thumb: data?.thumb, photo: data?.photo }));
       setPhotoFile(null);
       setMsg("Đã lưu ảnh!");
       setTimeout(() => setMsg(""), 1500);
-    } catch (error) {
+    } catch {
       setMsg("Không thể kết nối máy chủ");
     } finally {
       setIsSavingPhoto(false);
@@ -86,11 +95,11 @@ export default function AvatarPanel() {
         setMsg(data?.error || "Không thể đổi tên");
         return;
       }
-      setUser((prev: any) => ({ ...prev, fullName: data.fullName || nextName }));
+      setUser((prev) => ({ ...(prev || {}), fullName: data.fullName || nextName }));
       setIsEditingName(false);
       setMsg("Đã đổi tên");
       setTimeout(() => setMsg(""), 1500);
-    } catch (error) {
+    } catch {
       setMsg("Không thể kết nối máy chủ");
     }
   }

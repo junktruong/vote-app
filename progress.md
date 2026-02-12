@@ -56,3 +56,19 @@ Original prompt: Kiểm tra lại vòng quay may mắn nhé tôi muốn các s�
   - `/app/receipt-spin/page.tsx`: added `isSpinAudioActive` state with the same behavior for receipt spin animation.
 - Countdown behavior remains looped while `COUNTING` in `/app/results/page.tsx` via `backgroundEnabled` condition.
 - Ran `npx eslint app/spin/page.tsx app/receipt-spin/page.tsx`: pass.
+- Ran full lint cleanup pass and fixed all ESLint `error` issues across API and page files.
+- Replaced explicit `any` usages with typed structures/`unknown` in:
+  - `/app/api/admin/polls/[id]/route.ts`
+  - `/app/api/admin/polls/route.ts`
+  - `/app/api/admin/users/route.ts`
+  - `/app/api/avatar/route.ts`
+  - `/app/api/register/route.ts`
+  - `/app/api/results/route.ts`
+  - `/app/api/vote/route.ts`
+  - `/app/dashboard/avatar-panel.tsx`
+  - `/app/vote/page.tsx`
+  - `/models/Poll.ts`
+- Fixed React hook lint errors in:
+  - `/app/page.tsx` (`set-state-in-effect`)
+  - `/app/results/page.tsx` (`set-state-in-effect` + typed data state)
+- `npm run lint` now passes with 0 errors (remaining 2 warnings are `@next/next/no-img-element` in `/app/dashboard/avatar-panel.tsx`).

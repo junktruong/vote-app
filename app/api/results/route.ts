@@ -3,6 +3,22 @@ import { dbConnect } from "@/lib/db";
 import Poll from "@/models/Poll";
 import Vote from "@/models/Vote";
 
+type CandidateRow = {
+  id: string;
+  name: string;
+};
+
+type CandidateVoteAgg = {
+  _id: string;
+  votes: number;
+};
+
+type CandidateResult = {
+  candidateId: string;
+  fullName: string;
+  voteCount: number;
+};
+
 export async function GET() {
   await dbConnect();
   const poll =
@@ -39,25 +55,25 @@ export async function GET() {
   }
 
   const shouldReveal = revealState === "REVEALED";
-  let candidates = (poll.candidates || []).map((c: any) => ({
+  let candidates: CandidateResult[] = (poll.candidates || []).map((c: CandidateRow) => ({
     candidateId: String(c.id),
     fullName: c.name,
     voteCount: 0,
   }));
-  let top = null;
+  let top: CandidateResult | null = null;
 
   if (shouldReveal) {
-    const counts = await Vote.aggregate([
+    const counts = (await Vote.aggregate([
       { $match: { pollId: poll._id } },
       { $group: { _id: "$candidateId", votes: { $sum: 1 } } },
-    ]);
-    const map = new Map<string, number>(counts.map((c: any) => [String(c._id), c.votes]));
+    ])) as CandidateVoteAgg[];
+    const map = new Map<string, number>(counts.map((c) => [String(c._id), Number(c.votes) || 0]));
     candidates = candidates
-      .map((c:any) => ({ ...c, voteCount: map.get(String(c.candidateId)) || 0 }))
-      .sort((a : any, b : any) => b.voteCount - a.voteCount || a.fullName.localeCompare(b.fullName));
+      .map((c) => ({ ...c, voteCount: map.get(String(c.candidateId)) || 0 }))
+      .sort((a, b) => b.voteCount - a.voteCount || a.fullName.localeCompare(b.fullName));
     top = candidates[0] || null;
   } else {
-    candidates = candidates.sort((a: any , b : any ) => a.fullName.localeCompare(b.fullName));
+    candidates = candidates.sort((a, b) => a.fullName.localeCompare(b.fullName));
   }
 
   return NextResponse.json({

@@ -7,8 +7,18 @@ export async function GET() {
   if (!(await isAdmin())) return NextResponse.json({ error: "Chưa đăng nhập admin." }, { status: 401 });
   await dbConnect();
   const users = await User.find({}).select("fullName username thumb photo photoUrl").sort({ createdAt: -1 }).lean();
+
+  type UserRow = {
+    _id: unknown;
+    fullName?: string;
+    username?: string;
+    thumb?: string;
+    photo?: string;
+    photoUrl?: string;
+  };
+
   return NextResponse.json({
-    users: users.map((u: any) => ({
+    users: (users as UserRow[]).map((u) => ({
       id: String(u._id),
       fullName: u.fullName,
       username: u.username,

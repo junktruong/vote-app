@@ -20,7 +20,7 @@ export async function PATCH(req: Request, { params }: Params) {
     await Poll.updateMany({ isActive: true }, { $set: { isActive: false, endedAt: new Date() } });
   }
 
-  const update: Record<string, any> = {};
+  const update: Record<string, unknown> = {};
   if (typeof title === "string" && title.trim()) update.title = title.trim();
   if (Number.isFinite(Number(maxVotes))) update.maxVotes = Math.max(1, Number(maxVotes));
   if (typeof showOnResults === "boolean") update.showOnResults = showOnResults;

@@ -1,15 +1,33 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+
+type VotePoll = {
+  isActive?: boolean;
+  title?: string;
+  maxVotes?: number;
+  status?: "OPEN" | "CLOSED" | string;
+  votingEndsAt?: string | null;
+};
+
+type VoteCandidate = {
+  candidateId: string;
+  fullName: string;
+};
+
+type VotePageData = {
+  poll?: VotePoll | null;
+  candidates: VoteCandidate[];
+};
 
 export default function VotePage() {
   // --- STATE & LOGIC GIỮ NGUYÊN ---
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<VotePageData | null>(null);
   const [msg, setMsg] = useState("Đang tải danh sách...");
   const [selected, setSelected] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [justVoted, setJustVoted] = useState<string[]>([]);
-  const [nowTick, setNowTick] = useState(Date.now());
+  const [nowTick, setNowTick] = useState(0);
   const r = useRouter();
   const accessTokenKey = "accessToken";
 
@@ -19,7 +37,7 @@ export default function VotePage() {
       const d = await res.json();
       setData(d);
       setMsg("");
-    } catch (e) {
+    } catch {
       setMsg("Lỗi kết nối.");
     }
   }
@@ -73,14 +91,15 @@ export default function VotePage() {
         setSubmitting(false);
         return setMsg(d.error || "Lỗi");
       }
+      const candidates = data?.candidates || [];
       const votedNames = selected
-        .map((id) => data.candidates.find((c: any) => c.candidateId === id)?.fullName)
-        .filter(Boolean);
+        .map((id) => candidates.find((c) => c.candidateId === id)?.fullName)
+        .filter((name): name is string => Boolean(name));
       setJustVoted(votedNames);
       setMsg("Thành công!");
       // Delay chuyển trang
       setTimeout(() => r.push("/results"), 2000);
-    } catch (e) {
+    } catch {
       setSubmitting(false);
       setMsg("Lỗi hệ thống");
     }
@@ -175,7 +194,7 @@ export default function VotePage() {
 
         {/* CANDIDATES GRID */}
         <section className="grid grid-cols-2 gap-4 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
-          {data.candidates.map((c: any) => {
+          {data.candidates.map((c) => {
             const isSelected = selected.includes(c.candidateId);
             return (
               <div

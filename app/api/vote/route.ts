@@ -28,7 +28,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: `Bạn chỉ được chọn tối đa ${maxVotes} ứng viên.` }, { status: 400 });
   }
 
-  const okCandidates = uniqueIds.every((id) => poll.candidates?.some((c: any) => String(c.id) === id));
+  const okCandidates = uniqueIds.every((id) =>
+    poll.candidates?.some((c: { id: string }) => String(c.id) === id)
+  );
   if (!okCandidates) return NextResponse.json({ error: "Ứng viên không hợp lệ." }, { status: 400 });
 
   const existingCount = await Vote.countDocuments({ pollId: poll._id, voterUserId: userId });
@@ -48,7 +50,7 @@ export async function POST(req: Request) {
   try {
     await Vote.insertMany(uniqueIds.map((id) => ({ pollId: poll._id, voterUserId: userId, candidateId: id })));
     return NextResponse.json({ ok: true });
-  } catch (e) {
+  } catch {
     return NextResponse.json({ error: "Không thể ghi nhận bình chọn." }, { status: 400 });
   }
 }
