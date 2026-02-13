@@ -75,3 +75,31 @@ Original prompt: Kiểm tra lại vòng quay may mắn nhé tôi muốn các s�
 - Fixed build type error in `/app/results/page.tsx` by narrowing poll fields outside interval callback (`countdownStartedAt`, `countdownDurationSec`) before use.
 - Fixed additional strict-null type issue in `/app/vote/page.tsx` (`data` possibly null in vote submit) by using a safe `candidates` fallback.
 - Verified with `npx tsc --noEmit`: pass.
+- 2026-02-13:
+  - Increased lucky-spin duration in `/app/spin/page.tsx` from `23000ms` to `30000ms` for a clearly longer wheel spin.
+  - Added decorative side logos on 3 pages using `/public/logo/amber.png` (left) and `/public/logo/dtn.png` (right):
+    - `/app/spin/page.tsx`
+    - `/app/receipt-spin/page.tsx`
+    - `/app/results/page.tsx`
+  - Logos are rendered as non-interactive background elements (`pointer-events-none`, low opacity) so they do not block content/actions.
+  - Verification: `npx eslint app/spin/page.tsx app/receipt-spin/page.tsx app/results/page.tsx` (pass, 0 errors; existing warning remains in `/app/results/page.tsx` about hook deps).
+- 2026-02-13 (follow-up):
+  - Normalized side-logo display size to be equal for both `amber` and `dtn` on all 3 pages by using the same fixed responsive width/height box (`h/w: clamp(11rem,17vw,16rem)` + `object-contain`):
+    - `/app/spin/page.tsx`
+    - `/app/receipt-spin/page.tsx`
+    - `/app/results/page.tsx`
+  - Keeps current placement (`top-[1%]`, `left/right-[10%]`) and highlight styling while ensuring both logos render at identical visual size.
+  - Verification: `npx eslint app/spin/page.tsx app/receipt-spin/page.tsx app/results/page.tsx` (0 errors; existing warning remains in `/app/results/page.tsx`).
+- 2026-02-13 (admin votes summary):
+  - Added total unique voters metric on admin page (`Người đã vote`) in the "Phiếu đã ghi nhận" section.
+  - Implementation uses current `voters` payload (grouped-by-user rows from `/api/admin/votes`) and computes `totalVoters` from rows with `count > 0`.
+  - UI now shows both badges together: `Tổng phiếu` and `Người đã vote` in `/app/admin/page.tsx`.
+  - Verification: `npx eslint app/admin/page.tsx` (pass).
+- 2026-02-13 (logo layout refinement):
+  - Results page (`/app/results/page.tsx`): moved side logos farther apart by pushing them back to outer edges (`left-0` and `right-0`).
+  - Receipt spin page (`/app/receipt-spin/page.tsx`): removed side logos and added a centered pair of logos directly below the announced number block, with tight spacing (`gap-1 sm:gap-2`).
+  - Verification: `npx eslint app/results/page.tsx app/receipt-spin/page.tsx` (0 errors; existing warning remains in `/app/results/page.tsx`).
+- 2026-02-13 (receipt logo layering tweak):
+  - Adjusted `/app/receipt-spin/page.tsx` logo layout per feedback: logos are now inside the number area as an underlay layer (`z-10`, shifted downward), while the winning number is rendered on top (`z-20`).
+  - Removed the previous external logo row below the spinner box.
+  - Verification: `npx eslint app/receipt-spin/page.tsx` (pass).

@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import Confetti from "react-confetti";
 import { motion, AnimatePresence } from "framer-motion";
@@ -235,6 +236,24 @@ export default function Results() {
       <div className="absolute inset-0 z-0">
         <div className="absolute top-[-10%] left-[-10%] h-[500px] w-[500px] rounded-full bg-purple-600/20 blur-[120px]" />
         <div className="absolute bottom-[-10%] right-[-10%] h-[500px] w-[500px] rounded-full bg-yellow-600/10 blur-[120px]" />
+      </div>
+      <div className="pointer-events-none absolute left-0 top-[1%] z-[2] hidden w-[26vw] min-w-[170px] max-w-[360px] justify-center md:flex">
+        <Image
+          src="/logo/amber.png"
+          alt="Amber logo background"
+          width={260}
+          height={260}
+          className="h-[clamp(11rem,17vw,16rem)] w-[clamp(11rem,17vw,16rem)] object-contain opacity-50 drop-shadow-[0_0_26px_rgba(255,255,255,0.35)]"
+        />
+      </div>
+      <div className="pointer-events-none absolute right-0 top-[1%] z-[2] hidden w-[26vw] min-w-[170px] max-w-[360px] justify-center md:flex">
+        <Image
+          src="/logo/dtn.png"
+          alt="DTN logo background"
+          width={260}
+          height={260}
+          className="h-[clamp(11rem,17vw,16rem)] w-[clamp(11rem,17vw,16rem)] object-contain opacity-50 drop-shadow-[0_0_26px_rgba(255,255,255,0.35)]"
+        />
       </div>
 
       <div className="z-10 flex w-full max-w-4xl flex-col items-center px-4 pb-10 pt-8 md:pt-12">

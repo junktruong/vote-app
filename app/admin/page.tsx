@@ -335,6 +335,9 @@ export default function Admin() {
     const voteCount = Number(candidate?.voteCount) || 0;
     return voteCount > max ? voteCount : max;
   }, 0);
+  const totalVoters = voters.reduce((sum, voter) => {
+    return (Number(voter?.count) || 0) > 0 ? sum + 1 : sum;
+  }, 0);
 
   return (
     <main className="min-h-screen bg-[#FFFAF0] text-slate-900">
@@ -775,9 +778,14 @@ export default function Admin() {
             <div className="mt-4 rounded-2xl border border-red-100 bg-red-50/40 p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm font-bold uppercase tracking-[0.12em] text-red-700">Biểu đồ phiếu theo ứng viên</p>
-                <span className="rounded-full border border-red-200 bg-white px-3 py-1 text-xs font-semibold text-red-700">
-                  Tổng phiếu: {candidateTotalVotes}
-                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full border border-red-200 bg-white px-3 py-1 text-xs font-semibold text-red-700">
+                    Tổng phiếu: {candidateTotalVotes}
+                  </span>
+                  <span className="rounded-full border border-emerald-200 bg-white px-3 py-1 text-xs font-semibold text-emerald-700">
+                    Người đã vote: {totalVoters}
+                  </span>
+                </div>
               </div>
               <div className="mt-3 flex flex-col gap-3">
                 {candidateStats.map((candidate, index) => {

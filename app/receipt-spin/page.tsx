@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import Confetti from "react-confetti";
 import { usePageMusic } from "@/lib/use-page-music";
 
@@ -297,7 +298,26 @@ export default function ReceiptSpinPage() {
             ))}
           </div>
 
-          <div className="absolute inset-0 flex items-center justify-center">
+          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+            <div className="flex translate-y-[2%] items-center justify-center gap-1 sm:gap-2">
+              <Image
+                src="/logo/amber.png"
+                alt="Amber logo"
+                width={260}
+                height={260}
+                className="h-[clamp(10.4rem,18vw,15.6rem)] w-[clamp(10.4rem,18vw,15.6rem)] object-contain opacity-45 drop-shadow-[0_0_16px_rgba(255,255,255,0.25)]"
+              />
+              <Image
+                src="/logo/dtn.png"
+                alt="DTN logo"
+                width={260}
+                height={260}
+                className="h-[clamp(10.4rem,18vw,15.6rem)] w-[clamp(10.4rem,18vw,15.6rem)] object-contain opacity-45 drop-shadow-[0_0_16px_rgba(255,255,255,0.25)]"
+              />
+            </div>
+          </div>
+
+          <div className="absolute inset-0 z-20 flex items-center justify-center">
             <p className="font-mono text-[8.5rem] font-black tracking-[0.1em] text-cyan-300 drop-shadow-[0_0_28px_rgba(34,211,238,0.55)] sm:text-[13.5rem]">
               {formatNumber(displayNumber)}
             </p>

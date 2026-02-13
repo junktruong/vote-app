@@ -1,10 +1,12 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { usePageMusic } from "@/lib/use-page-music";
 
 const TOTAL_NUMBERS = 80;
-const CANVAS_SIZE = 1200; 
+const CANVAS_SIZE = 1200;
+const SPIN_DURATION_MS = 30000;
 
 function createShuffledNumbers(total: number) {
   const numbers = Array.from({ length: total }, (_, idx) => idx + 1);
@@ -166,7 +168,7 @@ export default function SpinPage() {
       finalAngle += TAU;
     }
 
-    const duration = 23000;
+    const duration = SPIN_DURATION_MS;
     const startTime = performance.now();
     const startAngle = currentRotation.current;
     const change = finalAngle - startAngle;
@@ -290,6 +292,24 @@ export default function SpinPage() {
       
       {/* Ánh sáng tâm điểm */}
       <div className="absolute top-0 left-1/2 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-red-600 blur-[150px] opacity-40"></div>
+      <div className="pointer-events-none absolute left-[10%] top-[1%] z-[2] hidden w-[26vw] min-w-[170px] max-w-[360px] justify-center md:flex">
+        <Image
+          src="/logo/amber.png"
+          alt="Amber logo background"
+          width={260}
+          height={260}
+          className="h-[clamp(11rem,17vw,16rem)] w-[clamp(11rem,17vw,16rem)] object-contain opacity-55 drop-shadow-[0_0_28px_rgba(255,215,0,0.45)]"
+        />
+      </div>
+      <div className="pointer-events-none absolute right-[10%] top-[1%] z-[2] hidden w-[26vw] min-w-[170px] max-w-[360px] justify-center md:flex">
+        <Image
+          src="/logo/dtn.png"
+          alt="DTN logo background"
+          width={260}
+          height={260}
+          className="h-[clamp(11rem,17vw,16rem)] w-[clamp(11rem,17vw,16rem)] object-contain opacity-55 drop-shadow-[0_0_28px_rgba(255,215,0,0.45)]"
+        />
+      </div>
 
       {/* Header */}
       <div className="relative z-10 text-center mb-6 px-4 transition-opacity duration-500"
