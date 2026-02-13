@@ -103,3 +103,17 @@ Original prompt: Kiểm tra lại vòng quay may mắn nhé tôi muốn các s�
   - Adjusted `/app/receipt-spin/page.tsx` logo layout per feedback: logos are now inside the number area as an underlay layer (`z-10`, shifted downward), while the winning number is rendered on top (`z-20`).
   - Removed the previous external logo row below the spinner box.
   - Verification: `npx eslint app/receipt-spin/page.tsx` (pass).
+- 2026-02-13 (results corner logos):
+  - Updated `/app/results/page.tsx` logo wrappers to pin at exact top corners (`left-0 top-0`, `right-0 top-0`) instead of centered within side containers, so logos sit sát góc trái/phải.
+  - Verification: `npx eslint app/results/page.tsx` (0 errors; existing warning remains).
+- 2026-02-13 (results logo visibility boost):
+  - Enhanced top-corner logos in `/app/results/page.tsx` to stand out on dark background:
+    - Added per-logo radial glow layer behind each logo.
+    - Added subtle circular tinted backing with border.
+    - Increased logo visibility (`opacity` up, `saturate` up, stronger color-matched drop shadows).
+  - Kept corner positioning unchanged (`left-0 top-0`, `right-0 top-0`).
+  - Verification: `npx eslint app/results/page.tsx` (0 errors; existing hook-deps warning remains).
+- 2026-02-13 (results white-glow cleanup):
+  - Removed circular glow/backplate and border around top-corner logos in `/app/results/page.tsx` per feedback.
+  - Switched to plain white glow only for both logos (`drop-shadow` white, high opacity).
+  - Verification: `npx eslint app/results/page.tsx` (0 errors; existing hook-deps warning remains).
