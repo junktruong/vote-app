@@ -720,7 +720,7 @@ export default function Admin() {
                           <input
                             value={spinSpecial}
                             onChange={(e) => setSpinSpecial(e.target.value)}
-                            placeholder="VD: 80"
+                            placeholder="VD: 90"
                             className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm focus:outline-none"
                           />
                         </label>

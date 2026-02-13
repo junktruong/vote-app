@@ -3,11 +3,13 @@ import { dbConnect } from "@/lib/db";
 import Poll from "@/models/Poll";
 import { isAdmin } from "@/lib/auth";
 
+const TOTAL_NUMBERS = 90;
+
 function parseNumbers(input: string) {
   if (!input) return [];
   const raw = input.split(/[\s,]+/).map((s) => s.trim()).filter(Boolean);
   const nums = raw.map((v) => Number(v)).filter((n) => Number.isFinite(n));
-  return Array.from(new Set(nums)).filter((n) => n >= 1 && n <= 80);
+  return Array.from(new Set(nums)).filter((n) => n >= 1 && n <= TOTAL_NUMBERS);
 }
 
 export async function POST(req: Request) {

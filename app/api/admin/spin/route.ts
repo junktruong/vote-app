@@ -3,7 +3,7 @@ import { dbConnect } from "@/lib/db";
 import Poll from "@/models/Poll";
 import { isAdmin } from "@/lib/auth";
 
-const TOTAL_NUMBERS = 80;
+const TOTAL_NUMBERS = 90;
 
 function pickRandom(available: number[]) {
   const idx = Math.floor(Math.random() * available.length);

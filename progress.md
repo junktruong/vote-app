@@ -120,3 +120,10 @@ Original prompt: Kiểm tra lại vòng quay may mắn nhé tôi muốn các s�
 - 2026-02-13 (spin logo brightness match):
   - Updated side logos in `/app/spin/page.tsx` to match results-page brightness style: high opacity with white glow (`drop-shadow` white) instead of colored glow.
   - Verification: `npx eslint app/spin/page.tsx` (pass).
+- 2026-02-13 (spin range 1..90):
+  - Updated lucky spin total range from 80 to 90 numbers (1..90) in UI and APIs.
+  - Changed `/app/spin/page.tsx`: `TOTAL_NUMBERS = 90` so wheel renders labels 01..90.
+  - Changed `/app/api/admin/spin/route.ts`: `TOTAL_NUMBERS = 90` so spin draw/validation/random pool all use 1..90.
+  - Changed `/app/api/admin/spin-config/route.ts`: config parser now accepts numbers up to 90 (`TOTAL_NUMBERS = 90`).
+  - Updated admin helper placeholder in `/app/admin/page.tsx` from `VD: 80` to `VD: 90`.
+  - Verification: `npx eslint app/spin/page.tsx app/api/admin/spin/route.ts app/api/admin/spin-config/route.ts app/admin/page.tsx` (pass), `npx tsc --noEmit` (pass).

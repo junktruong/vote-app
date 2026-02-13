@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { usePageMusic } from "@/lib/use-page-music";
 
-const TOTAL_NUMBERS = 80;
+const TOTAL_NUMBERS = 90;
 const CANVAS_SIZE = 1200;
 const SPIN_DURATION_MS = 30000;
 
