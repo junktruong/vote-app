@@ -298,7 +298,7 @@ export default function SpinPage() {
           alt="Amber logo background"
           width={260}
           height={260}
-          className="h-[clamp(11rem,17vw,16rem)] w-[clamp(11rem,17vw,16rem)] object-contain opacity-55 drop-shadow-[0_0_28px_rgba(255,215,0,0.45)]"
+          className="h-[clamp(11rem,17vw,16rem)] w-[clamp(11rem,17vw,16rem)] object-contain opacity-95 drop-shadow-[0_0_34px_rgba(255,255,255,0.78)]"
         />
       </div>
       <div className="pointer-events-none absolute right-[10%] top-[1%] z-[2] hidden w-[26vw] min-w-[170px] max-w-[360px] justify-center md:flex">
@@ -307,7 +307,7 @@ export default function SpinPage() {
           alt="DTN logo background"
           width={260}
           height={260}
-          className="h-[clamp(11rem,17vw,16rem)] w-[clamp(11rem,17vw,16rem)] object-contain opacity-55 drop-shadow-[0_0_28px_rgba(255,215,0,0.45)]"
+          className="h-[clamp(11rem,17vw,16rem)] w-[clamp(11rem,17vw,16rem)] object-contain opacity-95 drop-shadow-[0_0_34px_rgba(255,255,255,0.78)]"
         />
       </div>
 

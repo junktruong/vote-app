@@ -117,3 +117,6 @@ Original prompt: Kiểm tra lại vòng quay may mắn nhé tôi muốn các s�
   - Removed circular glow/backplate and border around top-corner logos in `/app/results/page.tsx` per feedback.
   - Switched to plain white glow only for both logos (`drop-shadow` white, high opacity).
   - Verification: `npx eslint app/results/page.tsx` (0 errors; existing hook-deps warning remains).
+- 2026-02-13 (spin logo brightness match):
+  - Updated side logos in `/app/spin/page.tsx` to match results-page brightness style: high opacity with white glow (`drop-shadow` white) instead of colored glow.
+  - Verification: `npx eslint app/spin/page.tsx` (pass).
